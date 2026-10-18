@@ -55,8 +55,8 @@ the development and verification target, as in Metal Slug 3.
   transient byte (`0x108D39` at VBlank 15271, written by the interrupted routine; equal again at
   the next VBlank). The same class as Metal Slug 3's 74 known VBlanks of its recording.
 - **MAME is not deterministic at boot here:** two replays of the same recording differed at
-  VBlanks 69-94 (RAM only, images identical): MAME's uninitialized NEO-PVC RAM
-  (docs/PHASE2_HARDWARE.md). The reference is the replay that matches the port (the port clears
+  VBlanks 69-94 (RAM only, images identical), most likely MAME's uninitialized NEO-PVC RAM
+  (docs/PHASE2_HARDWARE.md; not proven here). The reference is the replay that matches the port (the port clears
   that RAM, as MAME's other runs showed).
 - `ctest`: **92/92**.
 
