@@ -1,0 +1,280 @@
+/* Debug mode and cheats (Phase 7B): see cheats.h. Addresses in profile.h. */
+#include "cheats.h"
+
+#include <stdio.h>
+#include <string.h>
+
+#include "neogeo.h"
+#include "profile.h"
+
+uint16_t cheats_dips;
+static int keep_fat[2];
+int cheats_devmode;
+int cheats_start_mission;
+int cheats_start_mission_once = -1;
+int cheats_start_section_once = -1;
+FILE *cheats_spawn_log;
+
+const char *const CHEATS_SOLDIER_NAME[4] = {"Marco", "Eri", "Tarma", "Fio"};
+
+static uint8_t *ram8(uint32_t a) { return &ng.ram[a & 0xFFFF]; }
+static void ram16(uint32_t a, uint16_t v) { ram8(a)[0] = (uint8_t)(v >> 8); ram8(a)[1] = (uint8_t)v; }
+static uint8_t rom8(uint32_t a) { return ng_roms.p[a]; }
+static uint16_t rom16(uint32_t a) { return (uint16_t)(ng_roms.p[a] << 8 | ng_roms.p[a + 1]); }
+
+/* Everything here relies on profile.h: with another version of the game program
+   (profile_supported() == 0) nothing is forced and the cheats do nothing. */
+void cheats_apply(void)
+{
+    int ok = profile_supported();
+    ng_forced_read[NG_FORCED_DIPS] = (NgForcedRead){ok && cheats_dips != 0, game_profile.dips_word, cheats_dips, cheats_dips, 0, 0};
+    ng_forced_read[NG_FORCED_DEVMODE] = (NgForcedRead){ok && cheats_devmode, game_profile.devmode_word, 0xFF00, 0x0100, 0, 0};
+    ng_forced_read[NG_FORCED_DEVMODE_COPY] = (NgForcedRead){ok && cheats_devmode, game_profile.devmode_copy_word, 0xFF00, 0x0100, 0, 0};
+    ng_forced_read[NG_FORCED_FAT_STAGE] = (NgForcedRead){ok && game_profile.fat_check_first && (keep_fat[0] || keep_fat[1]), game_profile.stage_word, 0xFFFF,
+                                                         game_profile.fat_stage, game_profile.fat_check_first, game_profile.fat_check_last};
+}
+
+static uint32_t object_of(int p) { return p ? game_profile.player2_object : game_profile.player1_object; }
+
+/* Player table fields (profile.h: table layout). */
+static uint32_t field8(int p, uint32_t offset) { return game_profile.player_table + offset + (uint32_t)p * game_profile.table_stride_byte; }
+static uint32_t field16(int p, uint32_t offset) { return game_profile.player_table + offset + (uint32_t)p * game_profile.table_stride_word; }
+
+static uint32_t ram32(uint32_t a) { return (uint32_t)ram8(a)[0] << 24 | ram8(a)[1] << 16 | ram8(a + 2)[0] << 8 | ram8(a + 2)[1]; }
+
+int cheats_in_game(int player)
+{
+    if (!profile_supported()) return 0;
+    if (game_profile.game_state) return *ram8(game_profile.game_state) == game_profile.game_state_playing;
+    int p = player & 1;
+    return *ram8(0x10FDB6 + p) == 1 && ram32(object_of(p) + game_profile.object_table_ptr) == field8(p, 0);
+}
+
+int cheats_weapons(void) { return (int)game_profile.weapons; }
+
+static int spawn_item(int kind);
+static int normal_form(int p);
+
+/* With weapon items (Metal Slug 3): the weapon's item appears in front of player 1 and the game
+ * gives it when picked up (sprite, announcer, ammo). Otherwise, the same effect as the game's own
+ * pickup routine (Metal Slug X 0xC0928, Metal Slug 3 0x21DC8) minus the announcer: weapon, its
+ * sub-type, initial ammo and the player object's flags, all from the game's tables in the ROM,
+ * and the normal form for the new weapon requested (the pistol or a weapon in the hands). */
+int cheats_give_weapon(int player, int weapon)
+{
+    if (!cheats_in_game(player) || weapon < 0 || weapon >= cheats_weapons()) return 0;
+    if (game_profile.item_type && game_profile.weapon_items[weapon]) return spawn_item(game_profile.weapon_items[weapon]);
+    int p = player & 1;
+    uint32_t obj = object_of(p);
+    *ram8(field8(p, game_profile.table_weapon)) = (uint8_t)weapon;
+    *ram8(field8(p, game_profile.table_subtype)) = rom8(game_profile.rom_weapon_subtype + weapon * game_profile.rom_weapon_subtype_stride);
+    *ram8(field8(p, game_profile.table_shots)) = 0;
+    ram16(field16(p, game_profile.table_ammo), rom16(game_profile.rom_weapon_ammo + weapon * game_profile.rom_weapon_ammo_stride));
+    *ram8(obj + 0x94) = game_profile.rom_weapon_flag ? rom8(game_profile.rom_weapon_flag + weapon) : 0;
+    if (game_profile.rom_weapon_flag) *ram8(obj + 0x95) = 0;
+    if (game_profile.rom_weapon_form && cheats_form(p) <= 1)        /* normal: 0 pistol, 1 weapon */
+        *ram8(obj + game_profile.object_form + 1) = (uint8_t)normal_form(p);
+    return 1;
+}
+
+int cheats_set_bombs(int player, int n)
+{
+    if (!cheats_in_game(player)) return 0;
+    *ram8(field8(player & 1, game_profile.table_bombs)) = (uint8_t)(n < 0 ? 0 : n > 99 ? 99 : n);
+    return 1;
+}
+
+int cheats_set_lives(int player, int n)
+{
+    if (!cheats_in_game(player)) return 0;
+    *ram8((player & 1) ? game_profile.player2_lives : game_profile.player1_lives) = (uint8_t)(n < 0 ? 0 : n > 9 ? 9 : n);
+    return 1;
+}
+
+/* The soldier select index (Marco, Eri, Tarma, Fio) and the internal character number
+   (Marco 0, Tarma 1, Eri 2, Fio 3); the table is its own inverse. */
+static const uint8_t INTERNAL[4] = {0, 2, 1, 3};
+
+int cheats_soldier(int player)
+{
+    int v = *ram8((player & 1) ? game_profile.player2_soldier : game_profile.player1_soldier) & 3;
+    return game_profile.soldier_internal ? INTERNAL[v] : v;
+}
+
+int cheats_set_soldier(int player, int soldier)
+{
+    if (!cheats_in_game(player)) return 0;
+    int p = player & 1, s = soldier & 3;
+    uint32_t status = p ? game_profile.player2_soldier : game_profile.player1_soldier;
+    if (game_profile.soldier_internal) {           /* the status object's character: next life */
+        *ram8(status) = INTERNAL[s];
+        return 1;
+    }
+    *ram8(status) = (uint8_t)s;
+    *ram8(status - 1) = INTERNAL[s];
+    *ram8((p ? game_profile.player2_object : game_profile.player1_object) + game_profile.object_character) = INTERNAL[s];
+    return 1;
+}
+
+/* Transformations (player object: object_form current form, the next byte the requested one).
+   Fat: the food routine (Metal Slug X 0xC0BF4, Metal Slug 3 0x22176) adds to the player's food
+   counter (table_food) and requests form 2 at 0x780; the game then plays the transformation. The
+   other forms are requested the same way. */
+int cheats_form(int player)
+{
+    return *ram8(((player & 1) ? game_profile.player2_object : game_profile.player1_object) + game_profile.object_form);
+}
+
+/* Normal form is 0 with the pistol and 1 with (most) other weapons: a table in the ROM. */
+static int normal_form(int p)
+{
+    uint32_t w = *ram8(field8(p, game_profile.table_weapon));
+    return rom8(game_profile.rom_weapon_form + (w < game_profile.weapons ? w : 0));
+}
+
+int cheats_set_form(int player, int form)
+{
+    if (!cheats_in_game(player)) return 0;
+    int p = player & 1;
+    uint32_t obj = p ? game_profile.player2_object : game_profile.player1_object;
+    int now = *ram8(obj + game_profile.object_form);
+    if (game_profile.form_normal_first && now > FORM_FAT) form = FORM_NORMAL;      /* 0 / 1 normal, 2 fat */
+    keep_fat[p] = form == FORM_FAT;
+    ram16(field16(p, game_profile.table_food), keep_fat[p] ? game_profile.fat_food : 0);
+    *ram8(obj + game_profile.object_form + 1) = (uint8_t)(form == FORM_NORMAL ? normal_form(p) : form);
+    cheats_apply();
+    return 1;
+}
+
+/* ------------------------------------------------------------------ spawning objects */
+/* The stages create their objects from records read by a routine of the game (spawn_routine):
+   Metal Slug X 0x1A0A6, command 7: [7, length, group, flags, type*4, x, y, parameters...] (flags
+   bit 7: x relative to the screen); Metal Slug 3 0x16106, command 8: [8, length, group, flags,
+   x, y, type*4, parameters...] (flags 0: x and y on the screen). The port builds such a record
+   (spawn_head and the type, x and y words) below the game's stack and calls the routine
+   (ng_call68k) while the game waits for the VBlank, so the object is created exactly as the stage
+   would. */
+static int spawn_type = -1, spawn_param = -1;
+
+int cheats_spawn_type(int type)
+{
+    if (!cheats_in_game(0)) return 0;
+    spawn_type = type;
+    spawn_param = -1;
+    return 1;
+}
+
+/* Item records carry parameters: [kind, 0xFFFF, 0, 0, 0] (as the stages' items: no time limit,
+   the object's first variant). */
+static int spawn_item(int kind)
+{
+    if (!cheats_in_game(0)) return 0;
+    spawn_type = (int)game_profile.item_type;
+    spawn_param = kind;
+    return 1;
+}
+
+int cheats_spawn_vehicle(int vehicle)
+{
+    return vehicle >= 0 && vehicle < game_profile.n_vehicles && cheats_spawn_type(game_profile.vehicles[vehicle].type);
+}
+
+static void spawn_now(int type, int param)
+{
+    uint8_t r[20] = {0};
+    int len = param >= 0 ? 20 : 10;
+    memcpy(r, game_profile.spawn_head, 4);
+    r[1] = (uint8_t)len;
+    if (param >= 0) { r[10] = (uint8_t)(param >> 8); r[11] = (uint8_t)param; r[12] = r[13] = 0xFF; }
+    uint32_t x = param >= 0 ? game_profile.item_x : game_profile.spawn_x, y = game_profile.spawn_y;
+    if (game_profile.spawn_layer) {
+        uint32_t obj = object_of(0);
+        x += (ram32(obj + 0x3C) >> 16) - (ram32(game_profile.spawn_layer) >> 16);
+        y += (ram32(obj + 0x40) >> 16) - (ram32(game_profile.spawn_layer + 4) >> 16);
+    }
+    const struct { uint8_t at; uint32_t v; } w[3] = {
+        {game_profile.spawn_type_at, (uint32_t)type}, {game_profile.spawn_x_at, x & 0xFFFF}, {game_profile.spawn_y_at, y & 0xFFFF}};
+    for (int i = 0; i < 3; i++) { r[w[i].at] = (uint8_t)(w[i].v >> 8); r[w[i].at + 1] = (uint8_t)w[i].v; }
+    /* The record and the call's stack go below the game's stack, and that memory is put back
+       afterwards: only the routine's effects stay (the game may be using that area later, e.g.
+       the VBlank interrupt). */
+    uint32_t sp = ng_cpu.a[7] & ~1u, rec = sp - 0x400;
+    uint8_t scratch[0x400];
+    static uint8_t before[sizeof ng.ram];
+    if (cheats_spawn_log) memcpy(before, ng.ram, sizeof ng.ram);
+    for (uint32_t i = 0; i < sizeof scratch; i++) scratch[i] = *ram8(rec + i);
+    for (int i = 0; i < len; i++) bus_w8(rec + i, r[i]);
+    uint32_t d[8] = {0}, a[8] = {0};
+    a[0] = rec;
+    a[5] = 0x108000;
+    a[6] = game_profile.spawn_parent;
+    a[7] = sp - 0x100;
+    ng_call68k(game_profile.spawn_routine, d, a, 2000000);
+    for (uint32_t i = 0; i < sizeof scratch; i++) *ram8(rec + i) = scratch[i];
+    if (cheats_spawn_log) {                         /* the RAM the call changed, as PD_POKE entries */
+        for (uint32_t i = 0; i < sizeof ng.ram; i++)
+            if (ng.ram[i] != before[i])
+                fprintf(cheats_spawn_log, "%llu,%06X,%02X;", (unsigned long long)ng.frames - 1, 0x100000u + i, ng.ram[i]);
+        fflush(cheats_spawn_log);
+    }
+}
+
+/* Every frame: keeps a fat soldier fat (food counter topped up) until he dies or the cheat is
+   turned off. */
+void cheats_frame(void)
+{
+    /* Start mission: when a new game has set the mission to start at to 0 and the mission is not
+       loaded yet, the chosen one is written there, as the game's own memory card continue does
+       (Metal Slug 3: docs/PHASE4_PROFILE.md). Only while a player is playing (BIOS player status
+       at 0x10FDB6/0x10FDB7: 1 = playing): during the boot and the attract mode the bytes are 0 too. */
+    int start = cheats_start_mission_once >= 0 ? cheats_start_mission_once : cheats_start_mission;
+    if ((start > 0 || cheats_start_mission_once >= 0) && game_profile.missions && profile_supported() &&
+        (*ram8(0x10FDB6) == 1 || *ram8(0x10FDB7) == 1)) {
+        uint8_t *m = ram8(game_profile.start_mission);
+        if (m[0] == 0 && m[1] == 0) {
+            if (start > 0) m[0] = (uint8_t)start;
+            if (cheats_start_mission_once >= 0 && cheats_start_section_once >= 0) m[1] = (uint8_t)cheats_start_section_once;
+            cheats_start_mission_once = -1;
+            cheats_start_section_once = -1;
+        }
+    }
+    /* Spawn requests wait for a quiet moment: the game waiting for the VBlank. */
+    if (spawn_type >= 0 && ng_cpu.pc >= game_profile.wait_start && ng_cpu.pc < game_profile.wait_end) {
+        if (cheats_in_game(0)) spawn_now(spawn_type, spawn_param);
+        spawn_type = -1;
+    }
+    for (int p = 0; p < 2; p++) {
+        if (!keep_fat[p]) continue;
+        uint32_t obj = p ? game_profile.player2_object : game_profile.player1_object;
+        int form = *ram8(obj + game_profile.object_form), pending = *ram8(obj + game_profile.object_form + 1);
+        if (!cheats_in_game(p) || (form != FORM_FAT && pending != FORM_FAT)) { keep_fat[p] = 0; cheats_apply(); continue; }
+        ram16(field16(p, game_profile.table_food), game_profile.fat_food);
+    }
+}
+
+const char *cheats_weapon_name(int weapon)
+{
+    return weapon >= 0 && weapon < cheats_weapons() ? game_profile.weapon_names[weapon] : NULL;
+}
+
+/* ------------------------------------------------------------------ developer menu */
+/* Frame script relative to the request: one key held 0-29 with the other pressed 6-9 (pause),
+ * again held 40-69 with the other pressed 46-49 (menu); which is held depends on the game
+ * (game_profile.dev_menu). The game reads inputs once per logic tick (2 frames). */
+static int dev_frame = -1;
+
+void cheats_dev_menu(void)
+{
+    if (cheats_devmode) dev_frame = 0;
+}
+
+void cheats_input(uint8_t *joy, uint8_t *system)
+{
+    if (dev_frame < 0) return;
+    int f = dev_frame++;
+    int held = (f < 30) || (f >= 40 && f < 70), pressed = (f >= 6 && f < 10) || (f >= 46 && f < 50);
+    int d_first = game_profile.dev_menu == DEV_MENU_D_SELECT;
+    if (d_first ? pressed : held) *system |= NG_SELECT;
+    if (d_first ? held : pressed) *joy |= NG_D;
+    if (dev_frame >= 70) dev_frame = -1;
+}
