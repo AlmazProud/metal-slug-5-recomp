@@ -1034,6 +1034,14 @@ static int ask_for_game(char *error, int error_size)
             "(the game's zip + neogeo.zip, or files).", "",
             "Or copy it to the \"game\" folder", "next to the executable.",
         };
+        /* Games without a PC release (Metal Slug 5): only the MAME set. */
+        static const char *const LINES_MAME[] = {
+            "Your copy of the game was not found.", "",
+            "Drop its folder or zip on this window,", "or press ENTER to choose a folder.", "",
+            "It works with the MAME set", "(the game's zip + neogeo.zip,", "or their files).", "",
+            "Or copy it to the \"game\" folder", "next to the executable.",
+        };
+        const char *const *lines = ng_game->dotemu[NG_DOTEMU_P].name ? LINES : LINES_MAME;
         SDL_SetRenderDrawColor(r, 255, 200, 64, 255);
         char heading[96];
         snprintf(heading, sizeof heading, "%s  native port v%s", game_profile.title, PORT_VERSION);
@@ -1041,7 +1049,7 @@ static int ask_for_game(char *error, int error_size)
         SDL_SetRenderDrawColor(r, 230, 230, 230, 255);
         float y = 28;
         for (size_t i = 0; i < sizeof LINES / sizeof LINES[0]; i++, y += 10)
-            if (LINES[i][0]) SDL_RenderDebugText(r, 8, y, T(LINES[i]));
+            if (lines[i][0]) SDL_RenderDebugText(r, 8, y, T(lines[i]));
         /* the reason, wrapped at 38 characters */
         SDL_SetRenderDrawColor(r, 255, 120, 100, 255);
         y += 8;
