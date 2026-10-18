@@ -72,10 +72,26 @@ C:\Projecto Decompile\
     INSTALL.bat, env.ps1, env.bat, README.md   (copies from repo\setup\)
 repo\
   setup\        installer (setup.ps1, versions.json, env.*, record_game.bat, sdl3_test\)
-  tools\        audit.py, check_commit.py, hooks\; Phase 0: verify_set.py, probe_decryption.py,
-                pvc_banks.py, mame\ (Lua scripts); more arrive with Phase 1
-  docs\         ROM_MAP.md
+  src\cpu\      dispatcher, 68000 state, Musashi fallback            (imported from Metal Slug 3)
+  src\neogeo\   Neo Geo runtime (bus, LSPC, RTC, scheduler, ROMs, sound), shared by the three games
+  src\port\     SDL3 frontend (menus, configuration, headless mode), shared
+  src\games\    one folder per game: game.c (NgGame), profile.c (GameProfile), sounds.c
+  tools\        analysis, recompiler (recomp68k\), MAME Lua scripts (mame\), verification,
+                audit.py, check_commit.py, hooks\; Phase 0: verify_set.py, probe_decryption.py,
+                pvc_banks.py
+  tests\        differential\ and lockstep\, loader\
+  external\     Musashi, ymfm, z80.h, stb_truetype, fonts
+  docs\         ROM_MAP.md, PHASE1_IMPORT.md; ADPCM_B.md and QOL_FEATURES.md (shared code, from
+                Metal Slug 3)
 ```
+
+Build (environment active): `cmake -S repo -B repo\build -G Ninja -DCMAKE_BUILD_TYPE=Release`,
+`cmake --build repo\build`, `ctest --test-dir repo\build` (`-L mslug5` / `-L mslug3` / `-L mslugx`).
+Builds `repo\build\src\mslug5.exe` and, when the other ports' copies are there, the regression
+targets `mslug3.exe` (`PD_MS3_ROMS` / `PD_MS3_ANALYSIS`, default `<parent>\MS3_Port\roms` and
+`analysis`) and `mslugx.exe` (`PD_MSX_ROMS` / `PD_MSX_ANALYSIS`, default `<parent>\roms` and
+`analysis`). Interpreter-only (distributable) build: `-B repo\build-dist -DPD_RECOMPILED=OFF`.
+**Before closing any change to shared code: all Metal Slug 3 and Metal Slug X tests must pass.**
 
 Activate the environment: `. "C:\Projecto Decompile\MS5_Port\env.ps1"` (PowerShell) or
 `call "C:\Projecto Decompile\MS5_Port\env.bat"` (cmd). `PD_ROOT` is the workspace, `PD_TOOLS` the
@@ -89,13 +105,31 @@ Oracle: `mame mslug5 -bios us -rompath "<workspace>\roms"`.
 | Phase | Status |
 |---|---|
 | Environment | **Closed** (2026-10-17). Verification 17/17 OK. ROMs copied to `roms\`. |
-| 0. Reconnaissance (encryption schemes, black-box decryption, ROM map, NEO-PVC, oracle) | **Closed** pending approval (2026-10-18). See `docs/ROM_MAP.md`. All five regions decrypted as MAME does, byte for byte. |
-| 1. Import Metal Slug 3's runtime and frontend with an empty `mslug5` descriptor and profile | Pending. |
+| 0. Reconnaissance (encryption schemes, black-box decryption, ROM map, NEO-PVC, oracle) | **Closed** (2026-10-18). See `docs/ROM_MAP.md`. All five regions decrypted as MAME does, byte for byte. |
+| 1. Import Metal Slug 3's runtime and frontend with an empty `mslug5` descriptor and profile | **Closed** pending approval (2026-10-18). See `docs/PHASE1_IMPORT.md`. `ctest`: 85/85 (interpreter-only 81/81). |
 | 2. Metal Slug 5 hardware in the interpreter (NEO-PVC, encrypted M1, PCM2, banking) | Pending. |
 | 3. Analysis and recompilation | Pending. |
 | 4. Profile and frontend | Pending. |
 | 5. Loader (MAME set decrypted at load) | Pending. |
 | 6. Publishing (`AlmazProud/metal-slug-5-recomp`) | Pending. |
+
+### Phase 1: result
+
+Details in `docs/PHASE1_IMPORT.md`.
+
+- **Import:** Metal Slug 3 v1.2.0's code (commit `7c327dc`) in one unchanged commit; against the
+  Metal Slug 3 and Metal Slug X copies it passed the same 84 tests (`repo\build-ms3`).
+- **Three executables:** `mslug5.exe` (the product, interpreter only) and the regression targets
+  `mslug3.exe` and `mslugx.exe`, built when their copies are next to this workspace.
+- **`mslug5` descriptor:** the 13 cartridge files of MAME's set (CRC-32, SHA-1), `NG_CART_PVC`
+  (not emulated yet), no fix banking, no PC release, `mame_encrypted`. The loader recognizes the
+  set and stops: "MAME set found and verified (13 files, BIOS us), but its decryption is not in
+  the runtime yet" (test `mslug5_roms_mame`). Empty profile (title only); version 0.1.0.
+- **Shared code** (Metal Slug 3 and X unchanged): games without a PC release skip the DotEmu,
+  GOG and Steam searches and get a "game not found" screen that only mentions the MAME set
+  (English and Spanish); GOG's `sfix.sfix` (the workspace's BIOS files) is accepted after MAME's.
+- **Not done here:** the tools still default to `--game mslug3`, and `pd_recompiled_program`
+  expects a PC release's `<id>_game_m68k` (Phases 2-3); release tooling (Phase 6).
 
 ### Phase 0: result
 
