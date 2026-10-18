@@ -55,6 +55,8 @@ RUN_ENV = ("PD_DEVMODE", "PD_DEVMODE_COPY", "PD_DIPS", "PD_BLOOD")   # kept per 
 # Frames (screen:frame_number()) of the menu steps; checked with screenshots in MAME.
 START = {
     "mslug3": [(1800, 1805, "coin1"), (1900, 1905, "start1"), (2200, 2205, "a"), (2450, 2455, "a")],
+    # Metal Slug 5: after START the game's "How to play" runs until Soldier Select (about 5800).
+    "mslug5": [(2600, 2605, "coin1"), (2800, 2805, "start1"), (6100, 6105, "a"), (6400, 6405, "a")],
 }
 
 
@@ -94,7 +96,7 @@ def inp_date(inp: Path) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--game", default="mslug3", help="MAME machine (mslug3, mslugx)")
+    ap.add_argument("--game", default="mslug5", help="MAME machine (mslug5, mslug3, mslugx)")
     ap.add_argument("--script", help="attract, start or a script file (not needed with --replay --name)")
     ap.add_argument("--frames", type=int, default=10000)
     ap.add_argument("--out", type=Path, required=True)
@@ -150,7 +152,10 @@ def main() -> int:
     if a.screenshots:
         env.update(PD_SCREENSHOTS_SCRIPT=str(REPO / "tools" / "mame" / "screenshots.lua"),
                    PD_SCREENSHOT_FRAMES=a.screenshots, PD_PREFIX=name)
-    cmd = [str(mame), a.game, "-bios", "us", "-rompath", str(ROOT / "roms" / "mame"),
+    # The MAME set: <workspace>/roms/mame (Metal Slug 3: rebuilt by extract_roms.py) or, for Metal
+    # Slug 5, <workspace>/roms itself (mslug5.zip and neogeo).
+    rompath = ROOT / "roms" / "mame" if (ROOT / "roms" / "mame").is_dir() else ROOT / "roms"
+    cmd = [str(mame), a.game, "-bios", "us", "-rompath", str(rompath),
            "-video", "none", "-sound", "none", "-nothrottle",
            "-autoboot_script", str(REPO / "tools" / "mame" / "scripted_run.lua"),
            "-cfg_directory", str(work / "cfg"), "-nvram_directory", str(work / "nvram"),
