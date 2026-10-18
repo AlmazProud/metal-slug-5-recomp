@@ -1,0 +1,24 @@
+// Version resource: forces llvm-windres (and its preprocessor) to
+// run under the path containing a space.
+#include <winver.h>
+
+1 VERSIONINFO
+FILEVERSION     0,0,0,1
+PRODUCTVERSION  0,0,0,1
+FILEOS          VOS_NT_WINDOWS32
+FILETYPE        VFT_APP
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "ProductName",     "Projecto Decompile - SDL3 test"
+            VALUE "FileDescription", "Environment test"
+            VALUE "FileVersion",     "0.0.0.1"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END
