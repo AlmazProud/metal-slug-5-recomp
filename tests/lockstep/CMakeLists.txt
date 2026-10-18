@@ -31,4 +31,6 @@ if(PD_HAVE_MSLUGX)
     pd_lockstep(mslugx lockstep "${PD_MSX_ROMS}" "${PD_MSX_ANALYSIS}/state_f4000.bin" lockstep)
 endif()
 # Metal Slug 3: MAME dump in Mission 1 of the scripted game (analysis/phase3, dump_state.lua).
-pd_lockstep(mslug3 lockstep_mslug3 "${PD_ROMS}" "${PD_ANALYSIS}/phase3/state_start_f5000.bin" lockstep_mslug3)
+if(PD_HAVE_MSLUG3)
+    pd_lockstep(mslug3 lockstep_mslug3 "${PD_MS3_ROMS}" "${PD_MS3_ANALYSIS}/phase3/state_start_f5000.bin" lockstep_mslug3)
+endif()
