@@ -200,6 +200,31 @@ if(EXISTS "${PD_ROMS}/mslug5_game_m68k")
             set_tests_properties(mslug5_${run}_vs_mame PROPERTIES LABELS mslug5)
         endif()
     endforeach()
+    # Phase 3: games recorded by hand in MAME (grabar_partida.bat, empty NVRAM), replayed by
+    # mame_run.py --replay --name NAME into PD_ANALYSIS/phase3/play: mslug5_play_<NAME>_vs_mame.
+    # <NAME>_known_vblank.txt: VBlanks that differ only in the stack (docs/PHASE3_RECOMP.md).
+    file(GLOB played ${PD_ANALYSIS}/phase3/play/*_replay_fingerprints.txt)
+    foreach(fp ${played})
+        string(REGEX REPLACE "_replay_fingerprints\\.txt$" "" base "${fp}")
+        get_filename_component(run "${base}" NAME)
+        if(EXISTS "${base}_date.txt" AND EXISTS "${base}_frames.txt")
+            file(READ "${base}_date.txt" date)
+            file(READ "${base}_frames.txt" frames)
+            string(STRIP "${date}" date)
+            string(STRIP "${frames}" frames)
+            set(known)
+            if(EXISTS "${base}_known_vblank.txt")
+                set(known --known-differences ${base}_known_vblank.txt)
+            endif()
+            add_test(NAME mslug5_play_${run}_vs_mame
+                     COMMAND Python3::Interpreter -I ${PROJECT_SOURCE_DIR}/tools/verify_mission.py
+                             --exe $<TARGET_FILE:mslug5> --roms ${PD_ROMS}
+                             --inputs ${base}_replay_inputs.txt --reference ${fp}
+                             --frames ${frames} --date ${date} ${known}
+                             --output ${CMAKE_CURRENT_BINARY_DIR}/mslug5_play_${run}_fingerprints_port.txt)
+            set_tests_properties(mslug5_play_${run}_vs_mame PROPERTIES LABELS mslug5)
+        endif()
+    endforeach()
 endif()
 
 # ------------------------------------------------------------------ Metal Slug 3 tests
