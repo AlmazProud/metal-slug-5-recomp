@@ -1,7 +1,7 @@
 # Phase 2: Metal Slug 5 hardware in the interpreter
 
-**State:** in progress. Image and RAM identical to MAME; the audio waits for a decision on MAME's
-scheduler (below).
+**State:** ready to close (waiting for the user's approval). Image and RAM identical to MAME; the
+audio is a known difference, deferred by the user to a later stage (below).
 
 `mslug5.exe` (interpreter, no recompiled code yet) boots the decrypted reference files and runs
 identical to MAME 0.289 in image on every frame and in work RAM and palette on every VBlank, except
@@ -75,7 +75,7 @@ reset (MAME's reset notifier never fires; the boot check simply runs twice).
   game's load meter takes the other branch at `0xF08`; the next 10 VBlanks are taken one
   instruction apart; RAM (stack only) and image converge.
 
-## Audio: MAME's scheduler (open)
+## Audio: MAME's scheduler (deferred)
 
 The port's audio differs from MAME's `-wavwrite` in both runs (correlation 0.97, 23.7 % of the
 samples exact in the game run). What was measured (`analysis\phase2\ym`):
@@ -131,5 +131,8 @@ audio stays different (64.6 % and 23.7 % exact samples, correlation 0.91 / 0.97;
 
 ## Pending
 
-- The audio: the power-on alignment of the 68000, Z80 and YM2610 (above), the user's decision.
+- The audio (deferred by the user, 2026-10-18): the power-on alignment of the 68000, Z80 and
+  YM2610 (above). Starting point: the two Metal Slug 5-only corrections of the Option A table;
+  Metal Slug 3's tests after its reset must keep passing, and Metal Slug X's audio is a second
+  witness.
 - A longer game (Phase 3's recordings) and the other missions (Phase 4).
