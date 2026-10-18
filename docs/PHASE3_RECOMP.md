@@ -1,6 +1,6 @@
 # Phase 3: analysis and recompilation of Metal Slug 5
 
-**State:** in progress (started 2026-10-18).
+**State:** ready to close (waiting for the user's approval).
 
 ## Plan
 
@@ -21,21 +21,22 @@ the development and verification target, as in Metal Slug 3.
 ## Result so far
 
 - **Where the code runs** (MAME, `docs/PHASE3_COVERAGE.md`): P1 and the BIOS. **No code runs from
-  the NEO-PVC window** (562 M traced instructions in three runs), so the dispatcher did not
+  the NEO-PVC window** (1 472 M traced instructions in four runs), so the dispatcher did not
   change: P1 and the BIOS recompiled, everything else interpreted. Code in RAM (644 addresses,
   the attract's ROM checksum: the bulk readers at `0x10018C`/`0x1001A6`) stays interpreted.
-- **Coverage** (`analysis/phase3/coverage_*.json`, all used by the build): the bot (180 s) and
-  the playback of the attract and scripted recordings (`--playback <name>.inp`). The bot alone
-  missed 528 addresses that the scripted game runs (they were interpreted); with the playbacks,
-  0 of them are left.
-- **Analysis:** 40 099 P1 addresses executed in MAME, all reached by the static analysis;
-  4 117 functions; 0 bytes of code where MAME read data.
+- **Coverage** (`analysis/phase3/coverage_*.json`, all used by the build): the bot (180 s), the
+  playback of the attract and scripted recordings and of the user's game `partida1`
+  (`--playback <name>.inp`). The bot alone missed 528 addresses that the scripted game runs
+  (they were interpreted); with the playbacks, 0 of them are left.
+- **Analysis:** 64 700 P1 addresses executed in MAME, all reached by the static analysis; 0 bytes
+  of code where MAME read data (`docs/PHASE3_COVERAGE.md`).
 - **`mslug5.exe` recompiled** (the user's reference files' P1 and BIOS, by SHA-256):
 
   | Run | Frames | Recompiled dispatches | Interpreted steps | Time (interpreter only) |
   |---|---:|---:|---:|---|
   | scripted (`start`) | 9 001 | 5 874 408 | 3 334 | 7.2 s (19.6 s) |
   | `attract` | 10 007 | 5 454 566 | 23 189 514 (the RAM checksum) | 8.1 s |
+  | `partida1` (the user's game) | 48 359 | 32 054 025 | 17 901 | 43.2 s (103.6 s) |
 
   The interpreted steps of the scripted run are dispatches at an expired cycle limit and a few
   BIOS and RAM instructions.
@@ -46,7 +47,18 @@ the development and verification target, as in Metal Slug 3.
   (`tools/mame/dump_state.lua` with `PD_PVC=1`) carry the window's P2 offset and the chip's RAM.
   The game dump is frame 8 000 of the scripted run (Mission 1). All points verified, final memory
   identical.
-- `ctest`: **91/91**.
+- **The user's game** (`partida1`, 13.4 min recorded with `grabar_partida.bat`; MAME reference
+  by `mame_run.py --replay --name partida1`, test `mslug5_play_partida1_vs_mame`): images
+  identical on all 48 358 frames; RAM and palette identical except 48 known VBlanks
+  (`partida1_known_vblank.txt`), checked byte by byte: four events where MAME takes the VBlank
+  one instruction apart and their residue in the dead stack (`0x10F28E-0x10F2FB`), plus one
+  transient byte (`0x108D39` at VBlank 15271, written by the interrupted routine; equal again at
+  the next VBlank). The same class as Metal Slug 3's 74 known VBlanks of its recording.
+- **MAME is not deterministic at boot here:** two replays of the same recording differed at
+  VBlanks 69-94 (RAM only, images identical): MAME's uninitialized NEO-PVC RAM
+  (docs/PHASE2_HARDWARE.md). The reference is the replay that matches the port (the port clears
+  that RAM, as MAME's other runs showed).
+- `ctest`: **92/92**.
 
 ## Changes
 
@@ -58,6 +70,5 @@ the development and verification target, as in Metal Slug 3.
 
 ## Pending
 
-- A game recorded by the user (`grabar_partida.bat`) for coverage and verification of the
-  missions beyond the first.
-- Phase close: report and `CLAUDE.md`.
+- More recordings when available (the other missions; Phase 4).
+- The audio (deferred by the user, Phase 2).
