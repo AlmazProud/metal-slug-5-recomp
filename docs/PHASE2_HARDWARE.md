@@ -96,6 +96,28 @@ samples exact in the game run). What was measured (`analysis\phase2\ym`):
   are as MAME's; reproducing this needs a model of MAME's timeslices (when the Z80 is behind the
   68000), the same kind of problem as Metal Slug 3's raster interrupt residue.
 
+### Option A (the user's choice): the rule learned as a black box, time-boxed
+
+With MAME's Z80 timing per read around every command (`trace_z80_reads.lua`, `PD_AROUND`), three
+separate effects were found. Each was tried on Metal Slug 5 and on all of Metal Slug 3's and Metal
+Slug X's tests:
+
+| Effect | Evidence | Metal Slug 5 | Metal Slug 3 / X | Kept |
+|---|---|---|---|---|
+| **An NMI does not interrupt an IRQ acknowledge**: MAME runs the handler's first instruction (DI at `0x0038`) first | two cases (20.598 s, 97.947 s): the NMI vector is fetched 4 T after the 0x0038 fetch in MAME, right after the acknowledge in the port | needed | all pass | **yes** (`sound.c`) |
+| **The command a 68000 cycle earlier** (`write_end() - 4`, the start of the write access, instead of `- 3`) | the BIOS command at 4.724 s falls exactly on the end of a 10 T `JP` and MAME takes the NMI there | needed (otherwise 0.25 us offsets drift) | 22 audio tests fail (e.g. a command at 0.33 T into a 7 T instruction that MAME does not take early) | no |
+| **The YM2610's extra sample at power-on** (instead of at the soft reset) | without it, every ADPCM-A sound of Metal Slug 5 starts one step (3 samples) early; with it, both runs are identical | needed | the reset's sample is needed for 3 audio tests (`mission4`, `start_mission_option`, `partida1`) | no |
+
+With all three, **Metal Slug 5's two runs are identical to MAME sample for sample** (9 388 796 and
+8 444 361 samples), and Metal Slug 3's tests fail. No single rule fits both games for the last
+two effects. Both concern the alignment of the 68000, the Z80 and the YM2610 from power-on:
+Metal Slug 3's paths were validated after its first-boot watchdog reset (it is silent before it),
+Metal Slug X has no reset and its audio was never sample-exact, and Metal Slug 5 is the first game
+that runs entirely on the power-on path. The time box ended there; per the user's instruction the
+code keeps the first rule only (Metal Slug 3 and X unchanged: `ctest` 89/89), and Metal Slug 5's
+audio stays different (64.6 % and 23.7 % exact samples, correlation 0.91 / 0.97; the Z80's
+12 246 writes of the first 30 s identical in order and value).
+
 ## Tools
 
 - `tools/make_reference.py`: the decrypted reference files and the `sm1.sm1` stand-in.
@@ -109,5 +131,5 @@ samples exact in the game run). What was measured (`analysis\phase2\ym`):
 
 ## Pending
 
-- The audio, after the decision on MAME's scheduler.
+- The audio: the power-on alignment of the 68000, Z80 and YM2610 (above), the user's decision.
 - A longer game (Phase 3's recordings) and the other missions (Phase 4).
