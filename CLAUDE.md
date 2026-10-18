@@ -107,11 +107,27 @@ Oracle: `mame mslug5 -bios us -rompath "<workspace>\roms"`.
 | Environment | **Closed** (2026-10-17). Verification 17/17 OK. ROMs copied to `roms\`. |
 | 0. Reconnaissance (encryption schemes, black-box decryption, ROM map, NEO-PVC, oracle) | **Closed** (2026-10-18). See `docs/ROM_MAP.md`. All five regions decrypted as MAME does, byte for byte. |
 | 1. Import Metal Slug 3's runtime and frontend with an empty `mslug5` descriptor and profile | **Closed** (2026-10-18). See `docs/PHASE1_IMPORT.md`. `ctest`: 85/85 (interpreter-only 81/81). |
-| 2. Metal Slug 5 hardware in the interpreter (NEO-PVC, encrypted M1, PCM2, banking) | **Ready to close** (waiting for approval). See `docs/PHASE2_HARDWARE.md`. Image and RAM identical to MAME (known stack-only VBlanks); audio not exact: the power-on alignment of 68000, Z80 and YM2610, deferred by the user to a later stage (with two Metal Slug 5-only corrections it is exact, but they break Metal Slug 3). `ctest`: 89/89. |
-| 3. Analysis and recompilation | Pending. |
+| 2. Metal Slug 5 hardware in the interpreter (NEO-PVC, encrypted M1, PCM2, banking) | **Closed** (2026-10-18). See `docs/PHASE2_HARDWARE.md`. Image and RAM identical to MAME (known stack-only VBlanks); audio not exact: the power-on alignment of 68000, Z80 and YM2610, deferred by the user to a later stage (with two Metal Slug 5-only corrections it is exact, but they break Metal Slug 3). `ctest`: 89/89. |
+| 3. Analysis and recompilation | **In progress.** See `docs/PHASE3_RECOMP.md`. |
 | 4. Profile and frontend | Pending. |
 | 5. Loader (MAME set decrypted at load) | Pending. |
 | 6. Publishing (`AlmazProud/metal-slug-5-recomp`) | Pending. |
+
+### Phase 2: result
+
+Details in `docs/PHASE2_HARDWARE.md`.
+
+- **NEO-PVC** in `bus.c` (learned as a black box with `tools/bus_probe.py`): 8 KB of RAM at
+  `0x2FE000`, the byte-offset bank written at `0x2FFFF0-3` and the chip's rewrite of those bytes;
+  save states version 5.
+- **Data:** decrypted reference files built from MAME's regions (`tools/make_reference.py`,
+  checked by SHA-256); `sm1.sm1` is the first 128 KB of the decrypted M1.
+- **Against MAME** (`mslug5_attract_vs_mame`, `mslug5_start_vs_mame`): image identical on every
+  frame; RAM and palette identical except 31 listed stack-only VBlanks.
+- **Audio:** an NMI does not interrupt the YM2610's IRQ acknowledge (shared rule, Metal Slug 3 and
+  X unchanged). Not sample-exact (correlation 0.91 / 0.97): the power-on alignment of 68000, Z80
+  and YM2610, **deferred by the user**; the two Metal Slug 5-only corrections are documented.
+- `ctest`: 89/89.
 
 ### Phase 1: result
 

@@ -1,6 +1,6 @@
 # Phase 2: Metal Slug 5 hardware in the interpreter
 
-**State:** ready to close (waiting for the user's approval). Image and RAM identical to MAME; the
+**State:** closed (2026-10-18). Image and RAM identical to MAME; the
 audio is a known difference, deferred by the user to a later stage (below).
 
 `mslug5.exe` (interpreter, no recompiled code yet) boots the decrypted reference files and runs
