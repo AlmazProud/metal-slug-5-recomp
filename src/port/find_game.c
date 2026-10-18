@@ -10,7 +10,7 @@
  *     under steamapps\common with resources\game\<id>_game_m68k.
  *  4. The usual install folders on every drive.
  * Full recognition is done later by ng_roms_load; here it is enough that the 68000 program
- * exists. Steps 2-4 only apply to games with a PC release (ng_game->dotemu); Metal Slug 5 has
+ * exists. Steps 2-4 only apply to games with a PC release (ng_has_pc_release); Metal Slug 5 has
  * none, only MAME sets.
  *
  * Paths are handled in UTF-8: the executable's manifest (port.manifest) sets UTF-8 as the
@@ -172,7 +172,7 @@ int game_places(const char *exe_dir, char (*list)[1024], int max)
     snprintf(path, sizeof path, "%sroms", exe_dir);
     if (exists(path)) add(&p, path);
 #ifdef _WIN32
-    if (ng_game->dotemu[NG_DOTEMU_P].name) {      /* only games with a PC release */
+    if (ng_has_pc_release()) {
         gog(&p);
         steam(&p);
         usual(&p);

@@ -323,8 +323,10 @@ static void describe(NgRoms *r, int format, int verified)
     hex_string(i->p1_sha256, 32, hex);
     if (ng_game->gog_p1_sha256 && !strcmp(hex, ng_game->gog_p1_sha256)) i->version = NG_VERSION_GOG;
     sha256(r->bios, 131072, i->bios_sha256);
+    if (format == NG_FORMAT_DOTEMU && !ng_has_pc_release()) i->version = NG_VERSION_ARCADE;
     snprintf(i->description, sizeof i->description, "%s, %s, BIOS %s%s",
-             format == NG_FORMAT_DOTEMU ? "PC release files (DotEmu)" : "MAME set",
+             format == NG_FORMAT_MAME ? "MAME set" :
+             ng_has_pc_release() ? "PC release files (DotEmu)" : "Decrypted reference files (MAME's regions)",
              i->version == NG_VERSION_GOG ? "GOG program" :
              i->version == NG_VERSION_ARCADE ? "arcade program" : "unknown program",
              i->bios, verified ? "" : " (unverified)");

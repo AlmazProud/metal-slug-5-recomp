@@ -1041,7 +1041,7 @@ static int ask_for_game(char *error, int error_size)
             "It works with the MAME set", "(the game's zip + neogeo.zip,", "or their files).", "",
             "Or copy it to the \"game\" folder", "next to the executable.",
         };
-        const char *const *lines = ng_game->dotemu[NG_DOTEMU_P].name ? LINES : LINES_MAME;
+        const char *const *lines = ng_has_pc_release() ? LINES : LINES_MAME;
         SDL_SetRenderDrawColor(r, 255, 200, 64, 255);
         char heading[96];
         snprintf(heading, sizeof heading, "%s  native port v%s", game_profile.title, PORT_VERSION);
