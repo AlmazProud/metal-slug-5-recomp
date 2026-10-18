@@ -107,7 +107,7 @@ Oracle: `mame mslug5 -bios us -rompath "<workspace>\roms"`.
 | Environment | **Closed** (2026-10-17). Verification 17/17 OK. ROMs copied to `roms\`. |
 | 0. Reconnaissance (encryption schemes, black-box decryption, ROM map, NEO-PVC, oracle) | **Closed** (2026-10-18). See `docs/ROM_MAP.md`. All five regions decrypted as MAME does, byte for byte. |
 | 1. Import Metal Slug 3's runtime and frontend with an empty `mslug5` descriptor and profile | **Closed** (2026-10-18). See `docs/PHASE1_IMPORT.md`. `ctest`: 85/85 (interpreter-only 81/81). |
-| 2. Metal Slug 5 hardware in the interpreter (NEO-PVC, encrypted M1, PCM2, banking) | **In progress.** See `docs/PHASE2_HARDWARE.md`. Image and RAM identical to MAME (known stack-only VBlanks); audio open (MAME's scheduler). `ctest`: 89/89. |
+| 2. Metal Slug 5 hardware in the interpreter (NEO-PVC, encrypted M1, PCM2, banking) | **In progress.** See `docs/PHASE2_HARDWARE.md`. Image and RAM identical to MAME (known stack-only VBlanks); audio not exact yet: the power-on alignment of 68000, Z80 and YM2610 (with two Metal Slug 5-only corrections it is exact, but they break Metal Slug 3). `ctest`: 89/89. |
 | 3. Analysis and recompilation | Pending. |
 | 4. Profile and frontend | Pending. |
 | 5. Loader (MAME set decrypted at load) | Pending. |
