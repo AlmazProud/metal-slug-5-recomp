@@ -68,6 +68,7 @@ static struct {
     uint8_t bank[4];
     uint8_t command, pending, nmi_enabled, reply;
     int irq_ym;
+    int int_ack;                         /* inside an INT acknowledge sequence: NMI not sampled */
     int64_t timer[2];                    /* expiry (master), -1 = stopped */
     int64_t busy_end;
     int64_t next_sample;
@@ -210,8 +211,16 @@ static void tick_z80(void)
     if (!z80_trace_ready) z80_trace_start();
     if (z80_trace && z80_opdone(&s.z80) && s.t >= z80_trace_from && s.t <= z80_trace_to)
         fprintf(z80_trace, "C=%lld %04X:\n", (long long)(s.t / MASTER_PER_Z80), s.z80.pc);
+    /* MAME's Z80 runs at least one instruction of an interrupt handler before it takes another
+       interrupt (measured, Metal Slug 5: an NMI that arrives during the YM2610 IRQ's acknowledge
+       is taken after the DI at 0x0038). z80.h would take it at the end of the acknowledge
+       sequence, so the NMI is hidden until that sequence ends, and an NMI edge it latched since
+       the sequence began is forgotten (it is latched again then, and z80.h takes it at the end
+       of the handler's first instruction). An NMI latched before the sequence began would have
+       been taken instead of the IRQ. */
+    if (s.int_ack && z80_opdone(&s.z80)) s.int_ack = 0;
     uint64_t p = s.pins & ~(Z80_NMI | Z80_INT);
-    if (s.pending && s.nmi_enabled) p |= Z80_NMI;
+    if (s.pending && s.nmi_enabled && !s.int_ack) p |= Z80_NMI;
     if (s.irq_ym) p |= Z80_INT;
     /* z80.h fetches the next instruction (where it accepts interrupts) before RETN/RETI copy IFF2
        into IFF1, so an interrupt pending when the NMI handler returns waits one more
@@ -225,7 +234,12 @@ static void tick_z80(void)
         else if ((p & Z80_WR) && a >= 0xF800) s.ram[a & 0x7FF] = Z80_GET_DATA(p);
     } else if (p & Z80_IORQ) {
         uint16_t a = Z80_GET_ADDR(p);
-        if (p & Z80_M1) { Z80_SET_DATA(p, 0xFF); }        /* INT acknowledge (IM 1) */
+        if (p & Z80_M1) {                                   /* INT acknowledge (IM 1) */
+            Z80_SET_DATA(p, 0xFF);
+            s.int_ack = 1;
+            s.z80.int_bits &= ~Z80_NMI;
+            p &= ~Z80_NMI;
+        }
         else if (p & Z80_RD) { Z80_SET_DATA(p, port_read(a)); }
         else if (p & Z80_WR) port_write(a, Z80_GET_DATA(p));
     }
