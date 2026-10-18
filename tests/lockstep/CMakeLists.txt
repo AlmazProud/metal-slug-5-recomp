@@ -26,6 +26,9 @@ function(pd_lockstep id exe roms state prefix)
     endif()
 endfunction()
 
+# Metal Slug 5: MAME dump in Mission 1 of the scripted game (analysis/phase3, dump_state.lua with
+# PD_PVC=1: version 3, the NEO-PVC's window offset and RAM).
+pd_lockstep(mslug5 lockstep_mslug5 "${PD_ROMS}" "${PD_ANALYSIS}/phase3/state_start_f8000.bin" lockstep_mslug5)
 # Metal Slug X: MAME dump at frame 4000 of the user's recording.
 if(PD_HAVE_MSLUGX)
     pd_lockstep(mslugx lockstep "${PD_MSX_ROMS}" "${PD_MSX_ANALYSIS}/state_f4000.bin" lockstep)

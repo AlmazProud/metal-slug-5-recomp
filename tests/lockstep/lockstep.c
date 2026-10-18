@@ -4,7 +4,7 @@
  *    checkpoint at every dispatch: (cycles, PC, register hash).
  * 2) Runs pure Musashi from the same reset, instruction by instruction, and at every
  *    checkpoint requires the same PC and the same registers at the same cycle.
- * 3) Compares the final memory (RAM, SRAM, palette, VRAM).
+ * 3) Compares the final memory (RAM, SRAM, palette, VRAM, the NEO-PVC's RAM).
  *
  * VBlank (IRQ1, autovector) every frame at line 248. The recompiled side delivers it at a
  * dispatch point and records (cycle, PC); Musashi receives it at exactly that same point.
@@ -37,12 +37,14 @@ unsigned ref_reg(int r);
 typedef struct { int64_t cycles; uint32_t pc, hash; } Point;
 
 /* MAME dump: 19 registers, vectors, P2 window, RAM, SRAM, palette; version 2 adds the last value
- * written to the NEO-SMA bank register (the window's 16 bytes do not identify an SMA bank). */
+ * written to the NEO-SMA bank register (the window's 16 bytes do not identify an SMA bank);
+ * version 3 (NEO-PVC) adds the window's P2 offset and the chip's 8 KB of RAM. */
 typedef struct {
     uint32_t r[19];             /* D0-D7, A0-A6, SP, USP, SR, PC */
     uint8_t vectors[128], window[16];
     uint8_t ram[0x10000], sram[0x10000], palette[0x2000];
     int64_t bank_value;         /* -1: none written / version 1 */
+    uint8_t cart_ram[0x2000];   /* version 3 */
 } Dump;
 static Dump dump;
 static int have_dump;
@@ -58,7 +60,7 @@ static void load_dump(const char *path)
 {
     FILE *f = fopen(path, "rb");
     uint8_t magic[6];
-    if (!f || fread(magic, 1, 6, f) != 6 || (memcmp(magic, "PDEST1", 6) && memcmp(magic, "PDEST2", 6))) {
+    if (!f || fread(magic, 1, 6, f) != 6 || memcmp(magic, "PDEST", 5) || magic[5] < '1' || magic[5] > '3') {
         fprintf(stderr, "invalid dump: %s\n", path);
         exit(2);
     }
@@ -70,6 +72,10 @@ static void load_dump(const char *path)
     if (magic[5] == '2') {
         uint32_t v = be32(f);
         if (v != 0xFFFFFFFFu) dump.bank_value = v & 0xFFFF;
+    }
+    if (magic[5] == '3') {
+        dump.bank_value = be32(f);
+        if (fread(dump.cart_ram, 1, sizeof dump.cart_ram, f) != sizeof dump.cart_ram) { fprintf(stderr, "short dump\n"); exit(2); }
     }
     fclose(f);
     have_dump = 1;
@@ -96,6 +102,7 @@ static uint32_t hash_mem(const Machine *m)
     for (size_t i = 0; i < sizeof m->ram; i++) h = (h ^ m->ram[i]) * 0x01000193u;
     for (size_t i = 0; i < sizeof m->sram; i++) h = (h ^ m->sram[i]) * 0x01000193u;
     for (size_t i = 0; i < sizeof m->palette; i++) h = (h ^ m->palette[i]) * 0x01000193u;
+    for (size_t i = 0; i < sizeof m->cart_ram; i++) h = (h ^ m->cart_ram[i]) * 0x01000193u;
     for (size_t i = 0; i < 0x10000; i++) h = fnv(h, m->vram[i]);
     return h;
 }
@@ -186,7 +193,7 @@ int main(int argc, char **argv)
     program_register();
     memset(&c, 0, sizeof c);
     if (have_dump) {
-        mach_from_dump(&mb, dump.vectors, dump.window, dump.bank_value, dump.ram, dump.sram, dump.palette);
+        mach_from_dump(&mb, dump.vectors, dump.window, dump.bank_value, dump.ram, dump.sram, dump.palette, dump.cart_ram);
         for (int i = 0; i < 8; i++) c.d[i] = dump.r[i];
         for (int i = 0; i < 7; i++) c.a[i] = dump.r[8 + i];
         uint32_t sr = dump.r[17];
@@ -216,7 +223,7 @@ int main(int argc, char **argv)
     mach_use(&ma);
     ref_reset();
     if (have_dump) {
-        mach_from_dump(&ma, dump.vectors, dump.window, dump.bank_value, dump.ram, dump.sram, dump.palette);
+        mach_from_dump(&ma, dump.vectors, dump.window, dump.bank_value, dump.ram, dump.sram, dump.palette, dump.cart_ram);
         m68k_set_reg(M68K_REG_SR, dump.r[17]);
         for (int i = 0; i < 8; i++) m68k_set_reg(M68K_REG_D0 + i, dump.r[i]);
         for (int i = 0; i < 7; i++) m68k_set_reg(M68K_REG_A0 + i, dump.r[8 + i]);
@@ -301,8 +308,8 @@ int main(int argc, char **argv)
         }
         uint32_t mem_a = hash_mem(&ma);
         if (total != c.cycles) { printf("Final cycle differs: musashi %" PRId64 " recompiled %" PRId64 "\n", total, c.cycles); ok = 0; }
-        if (mem_a != mem_b) { printf("Final memory DIFFERS (ram/sram/palette/vram)\n"); ok = 0; }
-        else printf("Final memory identical (RAM, SRAM, palette, VRAM)\n");
+        if (mem_a != mem_b) { printf("Final memory DIFFERS (ram/sram/palette/vram/cartridge RAM)\n"); ok = 0; }
+        else printf("Final memory identical (RAM, SRAM, palette, VRAM, cartridge RAM)\n");
     }
     printf("%s\n", ok ? "LOCKSTEP OK" : "LOCKSTEP FAIL");
     return ok ? 0 : 1;
