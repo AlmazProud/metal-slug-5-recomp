@@ -36,7 +36,8 @@ enum { NG_START = 1 << 0, NG_SELECT = 1 << 1, NG_COIN = 1 << 2 };
 /* Everything that changes from one game to another, for the runtime and the frontend. Each
  * executable links the descriptor of its game (src/games/<id>.c), which defines `ng_game`.
  * Descriptors hold hashes and addresses only, never game data. */
-/* NG_CART_PVC: the NEO-PVC chip (Metal Slug 5), not emulated yet (Phase 2). */
+/* NG_CART_PVC: the NEO-PVC chip (Metal Slug 5): 8 KB of RAM over the top of the P2 window, whose
+   bytes 2FFFF0-2FFFF3 select the P2 window (bus.c, docs/PHASE2_HARDWARE.md). */
 enum { NG_CART_ALTERA_MSLUGX = 1, NG_CART_SMA = 2, NG_CART_PVC = 3 };
 /* Fix layer banking of cartridges with more than 128 KB of fix tiles (CMC chips). ROWS: one
  * 128 KB bank per tile row, taken from a table the game writes at VRAM 0x7500/0x7580 (the
@@ -82,7 +83,7 @@ typedef struct {
     const char *title;       /* "Metal Slug X" */
     const char *project;     /* "metal-slug-x-recomp" */
     const char *gog_id;      /* GOG Galaxy registry id */
-    NgDotEmuFile dotemu[NG_DOTEMU_ROLES];   /* names NULL: the game has no PC release */
+    NgDotEmuFile dotemu[NG_DOTEMU_ROLES];   /* names NULL: none (with no PC release: reference files) */
     const char *gog_p1_sha256;   /* first MB of the 68000 program (file byte order); NULL: none */
     const NgMameFile *mame;  /* NULL: MAME sets of this game are not supported */
     int n_mame;
@@ -103,6 +104,11 @@ typedef struct {
 } NgGame;
 
 extern const NgGame *const ng_game;
+
+/* A PC release exists (GOG, Steam): the frontend searches its installs and names it. Metal Slug 5
+   has none; its DotEmu-layout files are a decrypted reference made from MAME's regions
+   (tools/make_reference.py). */
+static inline int ng_has_pc_release(void) { return ng_game->gog_id && ng_game->gog_id[0]; }
 
 /* ------------------------------------------------------------------ ROMs */
 enum { NG_FORMAT_DOTEMU = 1, NG_FORMAT_MAME = 2 };
@@ -155,6 +161,7 @@ typedef struct {
     uint8_t shadow, cart_vectors, cart_fix, sram_unlocked, palette_bank;
     /* cartridge */
     uint32_t p2_base;                    /* program byte mapped at 0x200000 (P2 window) */
+    uint8_t cart_ram[0x2000];            /* NG_CART_PVC: 2FE000-2FFFFF, 68000 byte order */
     uint16_t prot_cmd, prot_cnt;
     /* LSPC */
     uint16_t vram_addr, vram_buffer, vram_mod;

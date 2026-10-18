@@ -9,6 +9,9 @@
  *                  docs/ROM_MAP.md there).
  *                  NEO-SMA (NG_CART_SMA): bank selected by writing to ng_game->sma_bank_reg,
  *                  chip ID at ng_game->sma_id_addr (docs/ROM_MAP.md).
+ *                  NEO-PVC (NG_CART_PVC): 2FE000-2FFFFF is 8 KB of RAM; writing its bytes
+ *                  2FFFF0-2FFFF3 selects the window at any byte offset (docs/ROM_MAP.md,
+ *                  docs/PHASE2_HARDWARE.md).
  *   300000         P1 (high byte) / DIP (low byte); 300001 (write) = watchdog
  *   300080         TEST (low byte)
  *   320000         Z80 reply (high byte) / coins and RTC (low byte); write = command
@@ -70,6 +73,32 @@ static void sma_bank(uint16_t v)
     for (int i = 0; i < 6; i++) n |= (uint32_t)((v >> ng_game->sma_bank_bits[i]) & 1) << i;
     uint32_t base = 0x100000 + ng_game->sma_banks[n];
     ng.p2_base = base + 0x100000 <= ng_roms.p_size ? base : 0x100000;
+}
+
+/* ------------------------------------------------------------------ NEO-PVC */
+/* Learned from MAME as a black box (tools/bus_probe.py): a write to 2FFFF0-2FFFF3 stores its
+   bytes, then the window starts at program byte 0x100000 + (F2 << 16 | F3 << 8 | F0) (the bytes
+   at 2FFFF2, 2FFFF3, 2FFFF0 as they are), and the chip rewrites them: F0 loses bit 0, F1 reads
+   0xA0, F2 loses bit 7. */
+static void pvc_bank(void)
+{
+    uint8_t *r = ng.cart_ram + 0x1FF0;
+    ng.p2_base = 0x100000 + ((uint32_t)r[2] << 16 | (uint32_t)r[3] << 8 | r[0]);
+    r[0] &= 0xFE;
+    r[1] = 0xA0;
+    r[2] &= 0x7F;
+}
+
+/* A word of the P2 window at program byte o. With an odd bank offset the word straddles two of
+   the program's words: MAME reads the region, little-endian 16-bit words, at the odd offset.
+   Past the end of the program: 0xFFFF. */
+static uint32_t p2_word(uint32_t o)
+{
+    const uint8_t *p = ng_roms.p;
+    if (!(o & 1)) return o + 1 < ng_roms.p_size ? (uint32_t)p[o] << 8 | p[o + 1] : 0xFFFF;
+    uint32_t lo = (o ^ 1) < ng_roms.p_size ? p[o ^ 1] : 0xFF;
+    uint32_t hi = ((o + 1) ^ 1) < ng_roms.p_size ? p[(o + 1) ^ 1] : 0xFF;
+    return hi << 8 | lo;
 }
 
 /* ------------------------------------------------------------------ system latch */
@@ -202,6 +231,10 @@ uint32_t bus_r16(uint32_t a)
     case 0x2: {
         if (ng_game->cart == NG_CART_ALTERA_MSLUGX && a >= 0x2FFFE0 && a <= 0x2FFFEF) return prot_read();
         if (ng_game->cart == NG_CART_SMA && a == ng_game->sma_id_addr) return ng_game->sma_id;
+        if (ng_game->cart == NG_CART_PVC) {
+            if (a >= 0x2FE000) return (uint32_t)ng.cart_ram[a & 0x1FFF] << 8 | ng.cart_ram[(a & 0x1FFF) + 1];
+            return p2_word(ng.p2_base + (a & 0xFFFFF));
+        }
         uint32_t o = ng.p2_base + (a & 0xFFFFF);
         return (uint32_t)ng_roms.p[o] << 8 | ng_roms.p[o + 1];
     }
@@ -284,6 +317,13 @@ static void write_bus(uint32_t a, uint16_t v, uint16_t mask)
             if (a >= 0x2FFFF0) { p2_bank(v); return; }
         }
         if (ng_game->cart == NG_CART_SMA && a == ng_game->sma_bank_reg) { sma_bank(v); return; }
+        if (ng_game->cart == NG_CART_PVC && a >= 0x2FE000) {
+            uint8_t *r = ng.cart_ram + (a & 0x1FFF);
+            if (mask & 0xFF00) r[0] = (uint8_t)(v >> 8);
+            if (mask & 0x00FF) r[1] = (uint8_t)v;
+            if ((a & ~3u) == 0x2FFFF0) pvc_bank();
+            return;
+        }
         ng.unmapped_writes++;
         return;
     case 0x3:
