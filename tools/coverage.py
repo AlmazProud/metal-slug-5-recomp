@@ -5,10 +5,11 @@ traces in parts as they are produced and deletes them, and saves a JSON with:
   - executed addresses per region (P1, P2 window per bank, BIOS, RAM),
   - observed targets of indirect jumps (jmp/jsr with a parenthesized operand).
 
-P2 window regions are "p2_banco<n>" (Metal Slug X: bank number) or, on a NEO-SMA cartridge,
-"p2_sma<offset>" (the P2 offset the window shows, 6 hex digits; tools/game_desc.py reads the bank
-table from the game's descriptor). The bank of an indirect jump is the number or the offset.
-NEO-SMA runs also record the P2 data reads ("lecturas_p2", P2 offsets).
+P2 window regions are "p2_banco<n>" (Metal Slug X: bank number) or, on a NEO-SMA or NEO-PVC
+cartridge, "p2_sma<offset>" / "p2_pvc<offset>" (the P2 offset the window shows, 6 hex digits;
+tools/game_desc.py reads the cartridge from the game's descriptor). The bank of an indirect jump
+is the number or the offset. NEO-SMA and NEO-PVC runs also record the P2 data reads
+("lecturas_p2", P2 offsets). Code run from the NEO-PVC's RAM (0x2FE000 up) is "pvc_ram".
 
 Usage:
     python tools/coverage.py --seconds 180 [--output FILE] [--no-bot]
@@ -42,10 +43,15 @@ def short_path(p: Path) -> str:
     return buf.value
 
 
+PVC = False                                            # set by main() from the descriptor
+
+
 # Region names are JSON keys of the coverage file: keep them.
 def region(pc: int) -> str:
     if pc < 0x100000:
         return "p1"
+    if 0x2FE000 <= pc < 0x300000 and PVC:
+        return "pvc_ram"
     if 0x200000 <= pc < 0x300000:
         return "p2_ventana"
     if 0xC00000 <= pc < 0xD00000:
@@ -56,11 +62,11 @@ def region(pc: int) -> str:
 
 
 class Accumulator:
-    def __init__(self, sma: bool) -> None:
+    def __init__(self, sma: bool, pvc: bool = False) -> None:
         self.pcs: dict[str, set] = defaultdict(set)
         self.indirect: set[tuple[int, int, int]] = set()   # (source, target, bank)
         self.bank = 0                                      # bank at reset: 0 / P2 offset 0
-        self.window = "p2_sma000000" if sma else "p2_banco0"
+        self.window = "p2_pvc000000" if pvc else "p2_sma000000" if sma else "p2_banco0"
         self.instructions = 0
 
     def process(self, path: Path) -> None:
@@ -71,9 +77,9 @@ class Accumulator:
                     self.bank = int(line[5:])
                     self.window = f"p2_banco{self.bank}"
                     continue
-                if line.startswith("SMA "):
+                if line.startswith(("SMA ", "PVC ")):
                     self.bank = int(line[4:], 16)
-                    self.window = f"p2_sma{self.bank:06X}"
+                    self.window = f"p2_{line[:3].lower()}{self.bank:06X}"
                     continue
                 m = LINE.match(line)
                 if not m:
@@ -106,7 +112,7 @@ def tools_dir(root: Path) -> Path:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     root = Path(os.environ.get("PD_ROOT", Path(__file__).resolve().parents[2]))
-    ap.add_argument("--game", default="mslug3", help="MAME machine (mslug3, mslugx)")
+    ap.add_argument("--game", default="mslug5", help="MAME machine (mslug5, mslug3, mslugx)")
     ap.add_argument("--seconds", type=int, default=180, help="emulated seconds")
     ap.add_argument("--output", type=Path, default=root / "analysis" / "coverage.json")
     ap.add_argument("--no-bot", action="store_true")
@@ -130,11 +136,17 @@ def main() -> int:
             f.unlink() if f.is_file() else f.rmdir()
     play = not (a.no_bot or a.playback)
     env = dict(os.environ, PD_TRACE_DIR=short_path(work), PD_PLAY="1" if play else "0")
+    global PVC
     sma = game_desc.sma(a.game)
+    PVC = game_desc.pvc(a.game)
     if sma:
         env.update(PD_SMA_REG=f"{sma.reg:X}", PD_SMA_BITS=",".join(map(str, sma.bits)),
                    PD_SMA_BANKS=",".join(f"{o:X}" for o in sma.banks))
-    cmd = [str(mame), a.game, "-bios", "us", "-rompath", str(root / "roms" / "mame"),
+    if PVC:
+        env["PD_PVC"] = "1"
+    # The MAME set: roms\mame (Metal Slug 3 and X workspaces) or roms\ (Metal Slug 5's).
+    rompath = root / "roms" / "mame" if (root / "roms" / "mame").is_dir() else root / "roms"
+    cmd = [str(mame), a.game, "-bios", "us", "-rompath", str(rompath),
            "-video", "none", "-sound", "none", "-nothrottle",
            "-debug", "-debugger", "none", "-autoboot_script", str(lua),
            "-cfg_directory", str(work / "cfg"), "-nvram_directory", str(nvram)]
@@ -146,7 +158,7 @@ def main() -> int:
     proc = subprocess.Popen(cmd, cwd=mame.parent, env=env,
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    acc = Accumulator(sma is not None)
+    acc = Accumulator(sma is not None, PVC)
     done = 0
     start = time.time()
 

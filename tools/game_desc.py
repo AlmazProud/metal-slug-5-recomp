@@ -1,7 +1,8 @@
 """Reads a game's cartridge description from its descriptor (src/games/<id>/game.c), so the Python
 tools share the runtime's single copy of it.
 
-Today: the NEO-SMA bank register (`.sma_bank_reg`, `.sma_bank_bits`, the `SMA_BANKS` table).
+Today: the NEO-SMA bank register (`.sma_bank_reg`, `.sma_bank_bits`, the `SMA_BANKS` table) and
+whether the cartridge is a NEO-PVC.
 """
 from __future__ import annotations
 
@@ -24,6 +25,12 @@ class Sma:
     def base(self, value: int) -> int:
         """P2 offset the window 0x200000 shows after `value` is written to the register."""
         return self.banks[self.index(value)]
+
+
+def pvc(game: str) -> bool:
+    """Whether the game's cartridge has a NEO-PVC (byte-offset P2 window, 8 KB of RAM)."""
+    path = REPO / "src" / "games" / game / "game.c"
+    return path.exists() and "NG_CART_PVC" in path.read_text(encoding="utf-8")
 
 
 def sma(game: str) -> Sma | None:
