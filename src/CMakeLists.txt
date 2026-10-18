@@ -155,14 +155,51 @@ else()
 endif()
 
 # ------------------------------------------------------------------ Metal Slug 5 tests
-# Phase 1: the MAME set (PD_ROMS: mslug5.zip and neogeo\) is recognized, every file by CRC-32 and
-# SHA-1. Its decryption is not in the runtime yet, so the loader stops there and says so.
+# Phase 1: the MAME set alone (mslug5.zip and neogeo\, linked into the build folder) is
+# recognized, every file by CRC-32 and SHA-1. Its decryption is not in the runtime yet, so the
+# loader stops there and says so.
 if(EXISTS "${PD_ROMS}/mslug5.zip")
-    add_test(NAME mslug5_roms_mame COMMAND mslug5 --roms ${PD_ROMS} --headless --frames 1 --no-audio)
-    set_tests_properties(mslug5_roms_mame PROPERTIES LABELS mslug5 WILL_FAIL OFF
+    set(MS5_SET ${CMAKE_CURRENT_BINARY_DIR}/mslug5_mameset)
+    add_test(NAME mslug5_roms_mame_make
+             COMMAND Python3::Interpreter -I ${PROJECT_SOURCE_DIR}/tests/loader/link_set.py ${PD_ROMS} ${MS5_SET}
+                     mslug5.zip neogeo/sp-u2.sp1 neogeo/000-lo.lo neogeo/sfix.sfix neogeo/sm1.sm1)
+    set_tests_properties(mslug5_roms_mame_make PROPERTIES FIXTURES_SETUP mslug5_mameset LABELS mslug5)
+    add_test(NAME mslug5_roms_mame COMMAND mslug5 --roms ${MS5_SET} --headless --frames 1 --no-audio)
+    set_tests_properties(mslug5_roms_mame PROPERTIES LABELS mslug5 FIXTURES_REQUIRED mslug5_mameset
                          PASS_REGULAR_EXPRESSION "MAME set found and verified \\(13 files, BIOS us\\)")
 else()
     message(STATUS "Metal Slug 5 tests disabled: the user's set (PD_ROMS/mslug5.zip) is missing")
+endif()
+# Phase 2: the decrypted reference files (tools/make_reference.py) load, every one with its hash.
+if(EXISTS "${PD_ROMS}/mslug5_game_m68k")
+    add_test(NAME mslug5_roms_reference COMMAND mslug5 --roms ${PD_ROMS} --headless --frames 1 --no-audio)
+    set_tests_properties(mslug5_roms_reference PROPERTIES ENVIRONMENT "PD_ROMS_INFO=1" LABELS mslug5
+                         PASS_REGULAR_EXPRESSION "Decrypted reference files \\(MAME's regions\\), arcade program, BIOS us\n")
+    # Scripted runs against MAME (tools/mame_run.py --game mslug5, references in PD_ANALYSIS/phase2):
+    #   attract: power-on with empty NVRAM, BIOS and the attract demo;
+    #   start: a credit, START, the game's "How to play", soldier select, Mission 1 with a bot.
+    # RAM, palette and image on every VBlank / frame (verify_mission.py); <run>_known_vblank.txt
+    # lists the VBlanks that differ only in the stack (docs/PHASE2_HARDWARE.md).
+    foreach(run attract start)
+        set(base ${PD_ANALYSIS}/phase2/${run}/${run})
+        if(EXISTS "${base}_fingerprints.txt" AND EXISTS "${base}_date.txt" AND EXISTS "${base}_frames.txt")
+            file(READ "${base}_date.txt" date)
+            file(READ "${base}_frames.txt" frames)
+            string(STRIP "${date}" date)
+            string(STRIP "${frames}" frames)
+            set(known)
+            if(EXISTS "${base}_known_vblank.txt")
+                set(known --known-differences ${base}_known_vblank.txt)
+            endif()
+            add_test(NAME mslug5_${run}_vs_mame
+                     COMMAND Python3::Interpreter -I ${PROJECT_SOURCE_DIR}/tools/verify_mission.py
+                             --exe $<TARGET_FILE:mslug5> --roms ${PD_ROMS}
+                             --inputs ${base}_inputs.txt --reference ${base}_fingerprints.txt
+                             --frames ${frames} --date ${date} ${known}
+                             --output ${CMAKE_CURRENT_BINARY_DIR}/mslug5_${run}_fingerprints_port.txt)
+            set_tests_properties(mslug5_${run}_vs_mame PROPERTIES LABELS mslug5)
+        endif()
+    endforeach()
 endif()
 
 # ------------------------------------------------------------------ Metal Slug 3 tests

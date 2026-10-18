@@ -4,7 +4,7 @@
  * There is no PC release: the only copy is MAME's `mslug5` set (NGM-2680), which is encrypted
  * (NEO-PVC program, CMC50 sprites, fix and M1, PCM2 ADPCM; docs/ROM_MAP.md). Hashes from
  * `mame -listxml mslug5` (MAME 0.289). Until the runtime has the decryption, the set is recognized
- * and reported, not loaded (mame_encrypted).
+ * and reported, not loaded (mame_encrypted), and the runtime loads the decrypted reference files.
  */
 #include "neogeo.h"
 
@@ -28,8 +28,19 @@ static const NgGame GAME = {
     .id = "mslug5",
     .title = "Metal Slug 5",
     .project = "metal-slug-5-recomp",
-    .gog_id = "",
-    /* .dotemu: no PC release (names NULL); .gog_p1_sha256: none */
+    .gog_id = "",                       /* no PC release */
+    /* The decrypted reference files (tools/make_reference.py: MAME's regions from the set above,
+       in the runtime's DotEmu layout), until the runtime decrypts the set itself (Phase 5). */
+    .dotemu = {
+        [NG_DOTEMU_P] = {"mslug5_game_m68k", 8388608, "60671bbe51782d5ae7379cb7a65b06b2c22fafbf6109579c6e664d33a6d48da0"},
+        [NG_DOTEMU_BIOS] = {"mslug5_bios_m68k", 131072, "01ff1db85c5b209d4f5879ea8348e3b39a237532c37232f14c2b48945e9aa7d8"},
+        [NG_DOTEMU_FIX_GAME] = {"mslug5_game_sfix", 131072, "bac0f26fb13b718d6a4787be48a1fce5c08b6b9cdc52a5487a95435fcd81067b"},
+        [NG_DOTEMU_FIX_BIOS] = {"mslug5_bios_sfix", 131072, "676765a530d9dcd2a5161aeefa1f91e7fbae273dbaa9b1cd68f5adbc71bb55b6"},
+        [NG_DOTEMU_TILES] = {"mslug5_tiles", 67108864, "8e910cb7d32d1060c1421d60e72d7f5b98b90d713ec3122139b4e94db89bdab9"},
+        [NG_DOTEMU_ZOOM] = {"mslug5_zoom_table", 131072, "2a76f023dc578804c6bcd58ed514ffc04fcb433b3bd75d4452575ffda57a0707"},
+        [NG_DOTEMU_Z80] = {"mslug5_game_z80", 524288, "df8bf6e4db78a7a1f7ff7455d42002757887e50300ec67acb8c5764eb763f3fb"},
+        [NG_DOTEMU_ADPCM] = {"mslug5_adpcm", 16777216, "860f1106a8324acb72284292ec0fd2fdce2b256fa943e15baf6e5979a14be9d2"},
+    },
     .mame = MAME,
     .n_mame = (int)(sizeof MAME / sizeof MAME[0]),
     .crypt = NULL,
