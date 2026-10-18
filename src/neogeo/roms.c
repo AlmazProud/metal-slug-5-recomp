@@ -10,7 +10,8 @@
  *    recognized by its CRC-32 and confirmed by SHA-1, the hashes MAME publishes (mame -listxml),
  *    whatever its name; the graphics are converted to the DotEmu layout the runtime uses (the
  *    inverse of tools/extract_roms.py). Only for games whose descriptor lists its files
- *    (ng_game->mame): encrypted sets are not supported yet.
+ *    (ng_game->mame); encrypted sets need the game's decryption (ng_game->crypt). Without it
+ *    (ng_game->mame_encrypted) the set is recognized and reported, not loaded.
  *
  * The repo only contains hashes, never data. */
 #include "neogeo.h"
@@ -46,6 +47,10 @@ typedef struct {
 
 static const SystemFile SYSTEM[] = {
     {S_SFIX, "sfix.sfix", 131072, 0xc2ea0cfd, "fd4a618cdcdbf849374f0a50dd8efe9dbab706c3", NULL},
+    /* The PC releases' system fix (Metal Slug 3's GOG copy, mslug3_bios_sfix in MAME's format):
+       28 bytes apart from MAME's (11 empty tiles with a few pixels). The Metal Slug 5 workspace's
+       BIOS files come from there, for MAME and the port alike. */
+    {S_SFIX, "sfix.sfix", 131072, 0x354029fc, "4ae4bf23b4c2acff875775d4cbff5583893ce2a1", NULL},
     {S_LO, "000-lo.lo", 131072, 0x5a86cff2, "5992277debadeb64d1c1c64b0a92d9293eaf7e4a", NULL},
     {S_BIOS, "sp-u2.sp1", 131072, 0xe72943de, "5c6bba07d2ec8ac95776aa3511109f5e1e2e92eb", "us"},
     {S_BIOS, "sp-e.sp1", 131072, 0x2723a5b5, "5dbff7531cf04886cde3ef022fb5ca687573dcb8", "us-e"},
@@ -316,7 +321,7 @@ static void describe(NgRoms *r, int format, int verified)
     i->verified = verified;
     sha256(r->p, MB, i->p1_sha256);             /* before the byte swap: file order */
     hex_string(i->p1_sha256, 32, hex);
-    if (!strcmp(hex, ng_game->gog_p1_sha256)) i->version = NG_VERSION_GOG;
+    if (ng_game->gog_p1_sha256 && !strcmp(hex, ng_game->gog_p1_sha256)) i->version = NG_VERSION_GOG;
     sha256(r->bios, 131072, i->bios_sha256);
     snprintf(i->description, sizeof i->description, "%s, %s, BIOS %s%s",
              format == NG_FORMAT_DOTEMU ? "PC release files (DotEmu)" : "MAME set",
@@ -439,6 +444,11 @@ static int load_mame(NgRoms *r, Candidates *cs, char *error, int size)
     }
 
     const NgMameCrypt *crypt = ng_game->crypt;
+    if (ng_game->mame_encrypted && !crypt) {
+        set_error(error, size, "MAME set found and verified (%d files, BIOS %s), but its decryption is not "
+                  "in the runtime yet", found - N_SYSTEM, sys_chosen[S_BIOS]->label);
+        goto done;
+    }
     r->p_size = crypt ? crypt->program_size : total[NG_MAME_P];
     r->p = malloc(r->p_size);
     r->fix_game_size = crypt ? crypt->fix_size : total[NG_MAME_S];
@@ -526,7 +536,8 @@ int ng_roms_load(NgRoms *r, const char *path, char *error, int error_size)
     set_error(error, error_size, "No %s files found in %s", ng_game->title, path);
     /* DotEmu files first (one folder with all of them), then a MAME set anywhere below. */
     for (int i = 0; i < cs.n && result != 0; i++)
-        if (!strcmp(cs.c[i].base, ng_game->dotemu[NG_DOTEMU_P].name)) result = load_dotemu(r, &cs, cs.c[i].group, error, error_size);
+        if (ng_game->dotemu[NG_DOTEMU_P].name && !strcmp(cs.c[i].base, ng_game->dotemu[NG_DOTEMU_P].name))
+            result = load_dotemu(r, &cs, cs.c[i].group, error, error_size);
     if (result != 0) {
         char dotemu_error[600];
         snprintf(dotemu_error, sizeof dotemu_error, "%s", error);

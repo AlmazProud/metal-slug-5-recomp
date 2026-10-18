@@ -36,7 +36,8 @@ enum { NG_START = 1 << 0, NG_SELECT = 1 << 1, NG_COIN = 1 << 2 };
 /* Everything that changes from one game to another, for the runtime and the frontend. Each
  * executable links the descriptor of its game (src/games/<id>.c), which defines `ng_game`.
  * Descriptors hold hashes and addresses only, never game data. */
-enum { NG_CART_ALTERA_MSLUGX = 1, NG_CART_SMA = 2 };
+/* NG_CART_PVC: the NEO-PVC chip (Metal Slug 5), not emulated yet (Phase 2). */
+enum { NG_CART_ALTERA_MSLUGX = 1, NG_CART_SMA = 2, NG_CART_PVC = 3 };
 /* Fix layer banking of cartridges with more than 128 KB of fix tiles (CMC chips). ROWS: one
  * 128 KB bank per tile row, taken from a table the game writes at VRAM 0x7500/0x7580 (the
  * "Garou" type in MAME's documentation; Garou and Metal Slug 3). */
@@ -81,11 +82,13 @@ typedef struct {
     const char *title;       /* "Metal Slug X" */
     const char *project;     /* "metal-slug-x-recomp" */
     const char *gog_id;      /* GOG Galaxy registry id */
-    NgDotEmuFile dotemu[NG_DOTEMU_ROLES];
-    const char *gog_p1_sha256;   /* first MB of the 68000 program (file byte order) */
+    NgDotEmuFile dotemu[NG_DOTEMU_ROLES];   /* names NULL: the game has no PC release */
+    const char *gog_p1_sha256;   /* first MB of the 68000 program (file byte order); NULL: none */
     const NgMameFile *mame;  /* NULL: MAME sets of this game are not supported */
     int n_mame;
-    const NgMameCrypt *crypt;   /* NULL: the MAME set's files are plain */
+    const NgMameCrypt *crypt;   /* NULL: the MAME set's files are plain (unless mame_encrypted) */
+    int mame_encrypted;      /* the MAME set needs a decryption the runtime does not have yet:
+                                it is recognized and reported, not loaded */
     /* cartridge hardware */
     int cart;                /* NG_CART_* */
     int fix_bank;            /* NG_FIX_BANK_* */
