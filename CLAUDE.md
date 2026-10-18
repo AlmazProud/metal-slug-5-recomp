@@ -72,7 +72,9 @@ C:\Projecto Decompile\
     INSTALL.bat, env.ps1, env.bat, README.md   (copies from repo\setup\)
 repo\
   setup\        installer (setup.ps1, versions.json, env.*, record_game.bat, sdl3_test\)
-  tools\        audit.py, check_commit.py, hooks\ (more tools arrive with Phase 0 and Phase 1)
+  tools\        audit.py, check_commit.py, hooks\; Phase 0: verify_set.py, probe_decryption.py,
+                pvc_banks.py, mame\ (Lua scripts); more arrive with Phase 1
+  docs\         ROM_MAP.md
 ```
 
 Activate the environment: `. "C:\Projecto Decompile\MS5_Port\env.ps1"` (PowerShell) or
@@ -86,14 +88,45 @@ Oracle: `mame mslug5 -bios us -rompath "<workspace>\roms"`.
 
 | Phase | Status |
 |---|---|
-| Environment | **Closed** pending approval (2026-10-17). Verification 17/17 OK. ROMs copied to `roms\`. |
-| 0. Reconnaissance (encryption schemes, black-box decryption, ROM map, NEO-PVC, oracle) | Pending. |
+| Environment | **Closed** (2026-10-17). Verification 17/17 OK. ROMs copied to `roms\`. |
+| 0. Reconnaissance (encryption schemes, black-box decryption, ROM map, NEO-PVC, oracle) | **Closed** pending approval (2026-10-18). See `docs/ROM_MAP.md`. All five regions decrypted as MAME does, byte for byte. |
 | 1. Import Metal Slug 3's runtime and frontend with an empty `mslug5` descriptor and profile | Pending. |
 | 2. Metal Slug 5 hardware in the interpreter (NEO-PVC, encrypted M1, PCM2, banking) | Pending. |
 | 3. Analysis and recompilation | Pending. |
 | 4. Profile and frontend | Pending. |
 | 5. Loader (MAME set decrypted at load) | Pending. |
 | 6. Publishing (`AlmazProud/metal-slug-5-recomp`) | Pending. |
+
+### Phase 0: result
+
+Details in `docs/ROM_MAP.md`.
+
+- **The set:** every game ROM of `mslug5`, `mslug5h`, `mslug5b` and `ms5plus` matches MAME 0.289
+  by CRC-32 and SHA-1 (`tools/verify_set.py`).
+- **Everything is transformed:** program (NEO-PVC), sprites and fix (CMC50, the fix taken from the
+  C ROMs, 128 KB), M1 (CMC50) and V (PCM2). MAME's regions from the real set are dumped in
+  `roms\decrypted\` (outside the repo, searched by the audit and the hook).
+- **Decryption learned as a black box** (`tools/probe_decryption.py learn|check`, synthetic
+  patterns, no MAME code read); each map reproduces MAME's region from the real set byte for byte
+  and predicts a fresh random image:
+  - program, sprites, fix and ADPCM: affine (input unit, bit permutation, XOR);
+  - the M1: a byte permutation keyed by the 16-bit sum of the file's first 64 KB, learned for the
+    real key (0x1FCD) with synthetic images made to have that sum.
+- **Independent check:** MAME's regions built from the `mslug5b` bootleg (already decrypted data)
+  give the same 64 MB of sprites and the same ADPCM (254 of 256 blocks).
+- **NEO-PVC as the game uses it:** only the bank registers `0x2FFFF0`/`0x2FFFF2`; the window
+  0x200000 shows the region from the byte offset `0x100000 + (V >> 8)`, V = `F2:F0` (checked on
+  every value MAME can map); the game uses `F2` = 0x1000-0x3000 (banks 0x200000-0x5FFFFF hold
+  data). A boot check writes 7 to `0x2FFFF0` and 0x000A to `0x25FFF0`; the values read back from
+  `0x2FFFF0` (0x0000, then 0x00A0) need probing in Phase 2.
+- **Z80:** only the four default NEO-ZMC banks (64 KB of the 512 KB M1). **Fix:** 128 KB, no fix
+  banking.
+- **Developer menu** strings (`SET DEBUG DIP`, `TEST STAGE`, `STAGE SELECT`, `SOUND TEST`) and
+  references to `0x10FE80` and `0x10F000`, as in Metal Slug 3: to be used from Phase 4.
+- **Oracle:** `mame mslug5 -bios us -rompath roms` boots to the title, the attract demo and a
+  scripted game (Mission 1), with sound (44 of 62 s).
+- Tools added: `verify_set.py`, `probe_decryption.py`, `pvc_banks.py`; Lua: `dump_region.lua`,
+  `screenshots.lua`, `trace_pvc.lua`, `pvc_bank_map.lua`, `trace_z80_banks.lua`.
 
 ### Environment phase: result
 
@@ -128,8 +161,8 @@ From `mame -listxml` (to be checked by CRC and SHA-1 in Phase 0):
 | `mslug5b` (bootleg) | P1 1 MB + P2 4 MB, S1 128 KB, M1 128 KB (`audiocpu`), V1-V4 (4 x 4 MB), C1-C8 | parts look already decrypted: cross-check only |
 | `ms5plus` (bootleg) | P1 1 MB + P2/P3 2 MB, S1 128 KB | C, M1 and V shared with `mslug5` |
 
-Expected (to be confirmed in Phase 0): NEO-PVC program protection (encryption + banks), CMC50
-sprites and fix, CMC50 M1, PCM2 V ROMs.
+Confirmed in Phase 0 (`docs/ROM_MAP.md`): NEO-PVC program (encryption + byte-offset banks),
+CMC50 sprites and fix, CMC50 M1 (keyed by the data), PCM2 V ROMs.
 
 BIOS: no `neogeo.zip`. The Metal Slug 3 workspace's files are used (`sp-u2.sp1`, `000-lo.lo`,
 `sm1.sm1`, `sfix.sfix`): `sfix.sfix` is GOG's, 28 bytes different from MAME's, and `sm1.sm1` is a
