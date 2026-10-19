@@ -274,6 +274,17 @@ if(EXISTS "${PD_ROMS}/mslug5_game_m68k")
                          --output ${CMAKE_CURRENT_BINARY_DIR}/mslug5_vehicles_fingerprints_port.txt)
         set_tests_properties(mslug5_vehicles_vs_mame PROPERTIES LABELS mslug5 ENVIRONMENT "PD_CHEAT=6700,vehicle,0,0")
     endif()
+    # Phase 4: the sound menu (src/games/mslug5/sounds.c, the profile's driver modes) is audible in
+    # the middle of the user's game and, after closing it, the game stays identical.
+    set(play1 ${PD_ANALYSIS}/phase3/play/partida1)
+    if(EXISTS "${play1}_replay_inputs.txt" AND EXISTS "${play1}_date.txt")
+        file(READ "${play1}_date.txt" date)
+        string(STRIP "${date}" date)
+        add_test(NAME mslug5_sound_menu
+                 COMMAND mslug5 --roms ${PD_ROMS} --headless --frames 20000 --test-sounds
+                         --inputs ${play1}_replay_inputs.txt --date ${date})
+        set_tests_properties(mslug5_sound_menu PROPERTIES LABELS mslug5)
+    endif()
     # Phase 3: games recorded by hand in MAME (grabar_partida.bat, empty NVRAM), replayed by
     # mame_run.py --replay --name NAME into PD_ANALYSIS/phase3/play: mslug5_play_<NAME>_vs_mame.
     # <NAME>_known_vblank.txt: VBlanks that differ only in the stack (docs/PHASE3_RECOMP.md).
