@@ -122,4 +122,5 @@ Each option was also checked to have an effect: without it, the run differs from
 
 ## Pending
 
-- Boss health bar and Boss Rush (Metal Slug 3's later options, a stage of their own there).
+- Boss health bar and Boss Rush: done as their own stages, `docs/BOSS_RUSH.md` (five bosses;
+  Mission 5's middle bosses and the bosses' names open).
