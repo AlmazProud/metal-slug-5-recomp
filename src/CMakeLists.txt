@@ -164,9 +164,26 @@ if(EXISTS "${PD_ROMS}/mslug5.zip")
              COMMAND Python3::Interpreter -I ${PROJECT_SOURCE_DIR}/tests/loader/link_set.py ${PD_ROMS} ${MS5_SET}
                      mslug5.zip neogeo/sp-u2.sp1 neogeo/000-lo.lo neogeo/sfix.sfix neogeo/sm1.sm1)
     set_tests_properties(mslug5_roms_mame_make PROPERTIES FIXTURES_SETUP mslug5_mameset LABELS mslug5)
+    # Phase 5: the set loads, decrypted at load (src/games/mslug5/crypt.c), with the recompiled
+    # program and the profile (the same P1 and BIOS as the reference files).
     add_test(NAME mslug5_roms_mame COMMAND mslug5 --roms ${MS5_SET} --headless --frames 1 --no-audio)
     set_tests_properties(mslug5_roms_mame PROPERTIES LABELS mslug5 FIXTURES_REQUIRED mslug5_mameset
-                         PASS_REGULAR_EXPRESSION "MAME set found and verified \\(13 files, BIOS us\\)")
+                         ENVIRONMENT "PD_ROMS_INFO=1"
+                         PASS_REGULAR_EXPRESSION "MAME set, arcade program, BIOS us\n.*profile supported")
+    # ...and decrypts to exactly the decrypted reference files (every region), zipped and loose.
+    if(EXISTS "${PD_ROMS}/mslug5_game_m68k")
+        add_test(NAME mslug5_roms_mame_zip COMMAND mslug5 --roms ${PD_ROMS} --headless --frames 1 --no-audio)
+        set_tests_properties(mslug5_roms_mame_zip PROPERTIES LABELS mslug5 FIXTURES_REQUIRED mslug5_mameset
+                             ENVIRONMENT "PD_COMPARE_ROMS=${MS5_SET}")
+        set(MS5_LOOSE ${CMAKE_CURRENT_BINARY_DIR}/mslug5_mameset_loose)
+        add_test(NAME mslug5_roms_mame_loose_make
+                 COMMAND Python3::Interpreter -I ${PROJECT_SOURCE_DIR}/tests/loader/link_set.py ${PD_ROMS} ${MS5_LOOSE}
+                         mslug5.zip! neogeo/sp-u2.sp1 neogeo/000-lo.lo neogeo/sfix.sfix neogeo/sm1.sm1)
+        set_tests_properties(mslug5_roms_mame_loose_make PROPERTIES FIXTURES_SETUP mslug5_mameloose LABELS mslug5)
+        add_test(NAME mslug5_roms_mame_loose COMMAND mslug5 --roms ${PD_ROMS} --headless --frames 1 --no-audio)
+        set_tests_properties(mslug5_roms_mame_loose PROPERTIES LABELS mslug5 FIXTURES_REQUIRED mslug5_mameloose
+                             ENVIRONMENT "PD_COMPARE_ROMS=${MS5_LOOSE}")
+    endif()
 else()
     message(STATUS "Metal Slug 5 tests disabled: the user's set (PD_ROMS/mslug5.zip) is missing")
 endif()

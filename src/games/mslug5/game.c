@@ -3,10 +3,13 @@
  *
  * There is no PC release: the only copy is MAME's `mslug5` set (NGM-2680), which is encrypted
  * (NEO-PVC program, CMC50 sprites, fix and M1, PCM2 ADPCM; docs/ROM_MAP.md). Hashes from
- * `mame -listxml mslug5` (MAME 0.289). Until the runtime has the decryption, the set is recognized
- * and reported, not loaded (mame_encrypted), and the runtime loads the decrypted reference files.
+ * `mame -listxml mslug5` (MAME 0.289). crypt.c decrypts it at load (docs/PHASE5_LOADER.md); the
+ * decrypted reference files of Phases 2-4 still load too, and their hashes are the reference for
+ * "verified".
  */
 #include "neogeo.h"
+
+extern const NgMameCrypt MSLUG5_CRYPT;     /* crypt.c */
 
 static const NgMameFile MAME[] = {
     {NG_MAME_P, 0, "268-p1cr.p1", 4194304, 0xd0466792, "880819933d997fab398f91061e9dbccb959ae8a1", "arcade"},
@@ -30,7 +33,7 @@ static const NgGame GAME = {
     .project = "metal-slug-5-recomp",
     .gog_id = "",                       /* no PC release */
     /* The decrypted reference files (tools/make_reference.py: MAME's regions from the set above,
-       in the runtime's DotEmu layout), until the runtime decrypts the set itself (Phase 5). */
+       in the runtime's DotEmu layout): what the set decrypts to. */
     .dotemu = {
         [NG_DOTEMU_P] = {"mslug5_game_m68k", 8388608, "60671bbe51782d5ae7379cb7a65b06b2c22fafbf6109579c6e664d33a6d48da0"},
         [NG_DOTEMU_BIOS] = {"mslug5_bios_m68k", 131072, "01ff1db85c5b209d4f5879ea8348e3b39a237532c37232f14c2b48945e9aa7d8"},
@@ -43,7 +46,7 @@ static const NgGame GAME = {
     },
     .mame = MAME,
     .n_mame = (int)(sizeof MAME / sizeof MAME[0]),
-    .crypt = NULL,
+    .crypt = &MSLUG5_CRYPT,
     .mame_encrypted = 1,
     .cart = NG_CART_PVC,
     .fix_bank = NG_FIX_BANK_NONE,
