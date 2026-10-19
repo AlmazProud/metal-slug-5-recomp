@@ -15,6 +15,7 @@
  */
 #include <SDL3/SDL.h>
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -583,21 +584,31 @@ static int sound_catalog(const Options *o)
     return 0;
 }
 
-/* Audio energy over n frames of the sound menu (mean of |sample|). */
+/* Audio energy over n frames of the sound menu: the mean of |sample - the samples' mean| (Metal
+   Slug 5's mixer leaves a constant level, which is not sound). */
 static double sounds_energy(int n)
 {
     int16_t b[4096 * 2];
+    int16_t *all = NULL;
     double sum = 0;
-    long count = 0;
+    long count = 0, cap = 0;
     for (int i = 0; i < n; i++) {
         sounds_frame();
         uint32_t k;
         while ((k = ng_audio_read(b, 4096)) > 0) {
-            for (uint32_t j = 0; j < 2 * k; j++) sum += b[j] < 0 ? -b[j] : b[j];
-            count += (long)(2 * k);
+            if (count + 2 * (long)k > cap) {
+                cap = (count + 2 * (long)k) * 2;
+                int16_t *p = realloc(all, (size_t)cap * sizeof *all);
+                if (!p) { free(all); return 0; }
+                all = p;
+            }
+            for (uint32_t j = 0; j < 2 * k; j++) { sum += b[j]; all[count++] = b[j]; }
         }
     }
-    return count ? sum / count : 0;
+    double mean = count ? sum / count : 0, dev = 0;
+    for (long j = 0; j < count; j++) dev += fabs(all[j] - mean);
+    free(all);
+    return count ? dev / count : 0;
 }
 
 static int test_sounds(const Options *o)

@@ -26,6 +26,10 @@ typedef struct {
     const char *name;
 } Sound;
 
+/* A sound driver mode (the command that selects it) and the sound menu tab its sounds go to. */
+enum { SOUND_MUSIC, SOUND_EFFECTS, SOUND_VOICES };
+typedef struct { uint8_t mode, category; } SoundMode;
+
 /* Gamepad rumble of an effect (driver mode 10): big motor, small motor, milliseconds. */
 typedef struct { uint8_t command; uint16_t low, high, ms; } SoundRumble;
 
@@ -50,6 +54,13 @@ typedef struct {
     const int *n_sounds;
     const SoundRumble *rumble;          /* rumble of the identified effects */
     int n_rumble;
+    /* The sound driver's modes (up to 4) and the commands that silence it (the first one also
+       ends the current mode). 0: Metal Slug X and 3's driver, modes 00 music, 10 effects, 11
+       voices, silenced by 03 03 06. */
+    const SoundMode *sound_modes;
+    int n_sound_modes;
+    const uint8_t *sound_stop;
+    int n_sound_stop;
     /* Addresses and values (see the game's profile file for what each one is). */
     uint32_t wait_start;
     uint32_t wait_end;
