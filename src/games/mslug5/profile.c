@@ -29,6 +29,13 @@ static const char *const WEAPONS[] = {
     "Super Grenade", "Weapon 16", "Weapon 17", "Weapon 18",
 };
 
+/* Transformations: player object $9F current form, $A0 requested, $9E its class (table 0x1C1D8),
+   requested by 0x1C1F4 (event x weapon class x form class, table 0x1C238). Food (0x1C8A4) adds
+   0x1F0 to the table's +8 counter and at 0x780 asks for event 1: fat (form 3, or 4 with a weapon
+   of class 2); while fat the counter runs down (0x202BA) and event 2 brings him back. No other
+   playable form was found (forms 5-8, events 3 and 4: not identified). */
+static const CheatForm FORMS[] = {{0, "Normal"}, {2, "Fat"}};
+
 /* Vehicles: the first 11 types of the object type table (0xE8CC0), found by spawning each one in
    Mission 1 (all show the "IN" marker but the truck). Type 0x2C is the weapon item (0xB3DBC).
    Names by appearance. */
@@ -59,6 +66,9 @@ static const ProfileWindow WINDOWS[] = {
                                  player, D1 weapon) and its pickup: ammo +0xC, weapon +4, previous +5 */
     {0x04E854, 0x04E948},     /* status object: character $98, lives $99 (from the BIOS lives option) */
     {0x0E8CC0, 0x0E8CEC},     /* object type table: the vehicles (types 0x00-0x28) */
+    {0x01C1C0, 0x01C298},     /* form tables (0x1C1C4, 0x1C1D8, 0x1C238) and the form request (0x1C1F4) */
+    {0x01C8A4, 0x01C8EE},     /* food: table +8 += 0x1F0, fat at 0x780 */
+    {0x0202A0, 0x0202E6},     /* fat: the food counter runs down */
     {0x0E951C, 0x0E962A},     /* stage object records: command 8 (spawn_routine) */
 };
 
@@ -67,7 +77,7 @@ const GameProfile game_profile = {
     .subtitle = "",
     .windows = WINDOWS,
     .n_windows = (int)(sizeof WINDOWS / sizeof WINDOWS[0]),
-    .windows_sha256 = "35b6d59669444666ccf48628c6bf33b3ae331c3a7bac73a5ea0b3d94e325f6bb",
+    .windows_sha256 = "d0642fa0640ce051f1770d769d95a79deb212432c2f4d4a090b8c48b67e5e8f3",
     .vehicles = VEHICLES,
     .n_vehicles = (int)(sizeof VEHICLES / sizeof VEHICLES[0]),
     .sounds = MSLUG5_SOUNDS,
@@ -155,6 +165,18 @@ const GameProfile game_profile = {
     .rom_weapon_ammo_stride = 10,
     .object_pickup_flag = 0xA1,
     .table_previous_weapon = 5,
+    /* Fat: the cheat requests the form the game's table gives for the event (1 fat, 2 normal) and
+       keeps the food counter at 0x780 while fat. */
+    .object_form = 0x9F,
+    .forms = FORMS,
+    .n_forms = (int)(sizeof FORMS / sizeof FORMS[0]),
+    .form_table = 0x1C238u,
+    .form_weapon_class = 0x1C1C4u,
+    .form_class = 0x1C1D8u,
+    .fat_class = 1,
+    .table_food = 8,
+    .fat_food = 0x780,
+    .form_help = "Fat lasts until you die or change it",
 
     /* Stage object records: routine 0xE951C (commands 8-15, Metal Slug 3's 0x16106; A0 = record,
      * A6 = the stage's object root 0x100BF4). Command 8: [8, length, group, flags, x, y, type*4

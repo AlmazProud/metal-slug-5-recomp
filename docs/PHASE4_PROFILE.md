@@ -72,6 +72,7 @@ the same run matches the port there).
 | `missions/mission4` + `PD_START_MISSION=4` | the "Start mission" option (`mslug5_start_mission_option_vs_mame`) |
 | `cheats/cheats` | Heavy Machine Gun and Enemy Chaser through the game's routine, 63 bombs, 7 lives, Eri |
 | `vehicles/vehicles` | the Metal Slug spawned in front of player 1 (ridden by the bot) |
+| `forms/forms` | fat at frame 6700 (the food counter kept at 0x780), normal at 6900 |
 
 Also in the port: the sound menu in the middle of the user's game (`mslug5_sound_menu`), the
 title logo generated from the attract title (sprites 344-376 and the TM 380), fast boot to the
@@ -92,11 +93,21 @@ and the silence sequence from the game profile (Metal Slug X and 3 keep theirs).
   rest keep their numbers.
 - **Rumble:** no automatic table (no effect identified); the user can set it per sound.
 
+## Fat
+
+The fat form exists, as in Metal Slug 3 (found by the user while testing; first discarded here
+because the requested forms were looked at too early). Player object `$9F` current form, `$A0`
+requested, `$9E` its class (table `0x1C1D8`); the request routine `0x1C1F4` reads the table
+`0x1C238` by event x weapon class (`0x1C1C4`) x form class. Food (`0x1C8A4`) adds `0x1F0` to the
+player table's +8 and at `0x780` asks for event 1: fat (form 3, or 4 with a weapon of class 2);
+while fat the counter runs down (`0x202BA`) and event 2 brings him back. The cheat requests the
+form the game's table gives (shared code: `form_table`, `form_weapon_class`, `form_class`,
+`fat_class` in the profile; Metal Slug X and 3 unchanged) and logs its RAM writes for the MAME run.
+
 ## Not offered for Metal Slug 5
 
-- **Transformations:** requesting each form (`$A0` of the player object; current form `$9F`)
-  shows no playable form like Metal Slug 3's (forms 3 and 4 only flash the soldier, 10 and 11
-  hang the game): the form cheat stays off.
+- **Other transformations:** forms 5-8 (events 3 and 4 of the form table) were not identified;
+  10 and 11 hang the game. The form cheat offers normal and fat.
 - **Weapons 16-18:** given with 200, 30 and 300 shots; not identified yet, listed by number.
 
 Each option was also checked to have an effect: without it, the run differs from MAME's.

@@ -274,6 +274,22 @@ if(EXISTS "${PD_ROMS}/mslug5_game_m68k")
                          --output ${CMAKE_CURRENT_BINARY_DIR}/mslug5_vehicles_fingerprints_port.txt)
         set_tests_properties(mslug5_vehicles_vs_mame PROPERTIES LABELS mslug5 ENVIRONMENT "PD_CHEAT=6700,vehicle,0,0")
     endif()
+    # The fat cheat (phase4/forms): fat at frame 6700, normal at 6900; the MAME run writes the bytes
+    # the cheat wrote (PD_SPAWN_POKES: the requested form and the food counter every frame).
+    set(fo ${PD_ANALYSIS}/phase4/forms/forms)
+    if(EXISTS "${fo}_fingerprints.txt" AND EXISTS "${fo}_known_vblank.txt")
+        file(READ "${fo}_date.txt" date)
+        file(READ "${fo}_frames.txt" frames)
+        string(STRIP "${date}" date)
+        string(STRIP "${frames}" frames)
+        add_test(NAME mslug5_forms_vs_mame
+                 COMMAND Python3::Interpreter -I ${PROJECT_SOURCE_DIR}/tools/verify_mission.py
+                         --exe $<TARGET_FILE:mslug5> --roms ${PD_ROMS}
+                         --inputs ${fo}_inputs.txt --reference ${fo}_fingerprints.txt
+                         --frames ${frames} --date ${date} --known-differences ${fo}_known_vblank.txt
+                         --output ${CMAKE_CURRENT_BINARY_DIR}/mslug5_forms_fingerprints_port.txt)
+        set_tests_properties(mslug5_forms_vs_mame PROPERTIES LABELS mslug5 ENVIRONMENT "PD_CHEAT=6700,form,0,2\;6900,form,0,0")
+    endif()
     # Phase 4: the sound menu (src/games/mslug5/sounds.c, the profile's driver modes) is audible in
     # the middle of the user's game and, after closing it, the game stays identical.
     set(play1 ${PD_ANALYSIS}/phase3/play/partida1)
