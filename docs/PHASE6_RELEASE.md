@@ -72,3 +72,10 @@ the slowdown off (Settings > Game) the notice says so; with cheats, debug option
 game it says that instead (Boss Rush shows no notice, its missions never count). The Records
 page notes it while the slowdown is off. The rule is the same as 1.0.0: only clean runs are
 saved. New test `mslug5_records_slowdown_off`; `ctest` 118/118.
+
+With the user's OK (2026-10-19): the commits pushed (CI passed in 51 s) and `gh release create
+v1.0.1` on `main` (`d98c495`) with `metal-slug-5-recomp-v1.0.1-win64.zip` (2 786 564 bytes,
+release audit clean, unpacked with the set in `game/` it runs the attract mode) and
+`release/notes-v1.0.1.md`: public, not a draft. The zip downloaded back has the same SHA-256.
+
+**Release:** https://github.com/AlmazProud/metal-slug-5-recomp/releases/tag/v1.0.1
