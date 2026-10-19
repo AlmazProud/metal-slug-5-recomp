@@ -1520,10 +1520,14 @@ int window_run(const Options *o)
                 bossbar_frame();
                 if (arc.rush && arc.active) records_invalidate();
                 RecordEvent rec;
-                if (records_frame(&rec) && (rec.new_time || rec.new_score)) {
+                if (records_frame(&rec)) {
                     char t[32];
                     records_time_text(rec.frames, t, sizeof t);
-                    fe_notify(T("New record: mission %d in %s"), rec.mission, t);
+                    if (rec.new_time || rec.new_score) fe_notify(T("New record: mission %d in %s"), rec.mission, t);
+                    /* a mission that does not count says why (Boss Rush's never count: no notice) */
+                    else if (!rec.clean && !(arc.rush && arc.active))
+                        fe_notify(T(rec.turbo ? "Record not saved: the slowdown is off (Settings > Game)"
+                                              : "Record not saved: cheats, debug options or a loaded game"));
                 }
                 if (arc.active) arcade_frame();
                 step = 0;

@@ -662,6 +662,8 @@ int headless_run(const Options *o)
     if (getenv("PD_DIPS")) cheats_dips = (uint16_t)strtoul(getenv("PD_DIPS"), NULL, 16);
     if (getenv("PD_DEVMODE")) cheats_devmode = 1;
     if (getenv("PD_START_MISSION")) cheats_start_mission = atoi(getenv("PD_START_MISSION")) - 1;   /* 1 = normal */
+    /* PD_MISSION_ONCE=n: Mission mode's start (window.c fe_mission_start), mission n (1 = first) */
+    if (getenv("PD_MISSION_ONCE")) cheats_start_mission_once = atoi(getenv("PD_MISSION_ONCE")) - 1;
     /* PD_BOSSRUSH=1: Boss Rush from the first new game (bossrush.c); its steps are printed. */
     if (getenv("PD_BOSSRUSH")) bossrush_start();
     cheats_apply();
@@ -730,7 +732,7 @@ int headless_run(const Options *o)
             records_time_text(rec.frames, t, sizeof t);
             printf("mission %d completed at frame %llu: %u frames (%s), score %u%s%s%s\n", rec.mission,
                    (unsigned long long)ng.frames - 1, (unsigned)rec.frames, t, (unsigned)rec.score,
-                   rec.clean ? "" : " (not clean)", rec.new_time ? ", new best time" : "",
+                   rec.clean ? "" : rec.turbo ? " (not clean: slowdown off)" : " (not clean)", rec.new_time ? ", new best time" : "",
                    rec.new_score ? ", new best score" : "");
         }
         count_end_frame();

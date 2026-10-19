@@ -15,6 +15,7 @@ typedef struct {
     int mission;                         /* 1-based */
     uint32_t frames, score;
     int clean, new_time, new_score;
+    int turbo;                           /* the slowdown was off at some point (one reason it is not clean) */
 } RecordEvent;
 
 void records_load(const char *path);    /* also sets where it is saved */

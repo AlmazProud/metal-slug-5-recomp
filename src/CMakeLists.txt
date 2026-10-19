@@ -340,6 +340,13 @@ bossrush 14119: cleared, 5/5 bosses defeated")
         set_tests_properties(mslug5_progress_game_completed PROPERTIES LABELS mslug5
             ENVIRONMENT "PD_PROGRESS=${CMAKE_CURRENT_BINARY_DIR}/mslug5_progress_completed.ini;PD_DEVMODE=1;PD_DIPS=8009;PD_POKE=5800,10D680,4\;5800,10D681,6"
             PASS_REGULAR_EXPRESSION "game completed at frame 9017")
+        # A mission completed with the slowdown off is not recorded, and says why.
+        add_test(NAME mslug5_records_slowdown_off
+                 COMMAND mslug5 --roms ${PD_ROMS} --headless --no-audio --turbo 2 --frames 9100 --script ${rush3}
+                         --date 2026-10-18-00-59-09-0)
+        set_tests_properties(mslug5_records_slowdown_off PROPERTIES LABELS mslug5
+            ENVIRONMENT "PD_RECORDS=${CMAKE_CURRENT_BINARY_DIR}/mslug5_records_turbo.ini;PD_RECORDS_MIN_FRAMES=600;PD_DEVMODE=1;PD_DIPS=8009;PD_POKE=5800,10D680,4\;5800,10D681,6"
+            PASS_REGULAR_EXPRESSION "mission 5 completed at frame [0-9]+: .*\\(not clean: slowdown off\\)")
     endif()
     # Phase 4: the sound menu (src/games/mslug5/sounds.c, the profile's driver modes) is audible in
     # the middle of the user's game and, after closing it, the game stays identical.

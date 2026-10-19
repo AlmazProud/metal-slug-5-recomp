@@ -24,7 +24,7 @@ static int rush_defeated;
 static char file[1100];
 
 /* the mission being timed */
-static int in_game_was, cur = -1, clean;
+static int in_game_was, cur = -1, clean, turbo_used;
 static uint64_t start_frame;
 static uint32_t start_score;
 
@@ -87,6 +87,7 @@ static void begin(int mission)
     start_frame = ng.frames;
     start_score = score_now();
     clean = fair_now();
+    turbo_used = cpu_turbo != 0;
 }
 
 void records_invalidate(void) { clean = 0; }
@@ -106,6 +107,7 @@ int records_frame(RecordEvent *e)
     int was = in_game_was;
     in_game_was = in_game;
     if (!fair_now()) clean = 0;
+    if (cpu_turbo) turbo_used = 1;
     if (!in_game) { cur = -1; return 0; }
     if (!was || cur < 0) {                                            /* a new game */
         if (now < (int)game_profile.missions) begin(now);
@@ -129,6 +131,7 @@ int records_frame(RecordEvent *e)
     uint32_t sc = score_now();
     e->score = sc >= start_score ? sc - start_score : 0;
     e->clean = clean;
+    e->turbo = turbo_used;
     if (clean && cur < MAX_MISSIONS) {
         if (!best[cur].has || e->frames < best[cur].frames) { e->new_time = 1; best[cur].frames = e->frames; }
         if (!best[cur].has || e->score > best[cur].score) { e->new_score = 1; best[cur].score = e->score; }

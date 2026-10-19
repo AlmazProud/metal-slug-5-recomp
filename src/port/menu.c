@@ -694,6 +694,9 @@ static const char *help(int op)
         return T(on_gamepad_tab() ? "A: press the new button (wait 6 s to cancel). Y: clear. The triggers count as buttons"
                                   : "Enter: press the new key (Esc cancels). Del: clear");
     if (op >= OP_REC_M1 && op <= OP_REC_LAST) op = OP_REC_ARCADE;     /* the same note */
+    /* with the slowdown off, the mission records say so (they are not being saved) */
+    if ((op == OP_RECORDS || (op >= OP_REC_RUSH && op <= OP_REC_LAST)) && cpu_turbo)
+        return T("The slowdown is off (Settings > Game): mission and Boss Rush records are not saved until it is back to the original");
     return T(help_en(op));
 }
 
