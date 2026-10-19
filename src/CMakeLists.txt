@@ -223,6 +223,23 @@ if(EXISTS "${PD_ROMS}/mslug5_game_m68k")
             set_tests_properties(mslug5_${run}_vs_mame PROPERTIES LABELS mslug5 ENVIRONMENT "${env}")
         endif()
     endforeach()
+    # Phase 4: the "Start mission" option (PD_START_MISSION) against the MAME run that starts at
+    # Mission 4: identical images; RAM differs while the option has written the mission and the
+    # MAME run has not yet (mission4_option_known_vblank.txt).
+    set(m4 ${PD_ANALYSIS}/phase4/missions/mission4)
+    if(EXISTS "${m4}_option_known_vblank.txt" AND EXISTS "${m4}_fingerprints.txt")
+        file(READ "${m4}_date.txt" date)
+        file(READ "${m4}_frames.txt" frames)
+        string(STRIP "${date}" date)
+        string(STRIP "${frames}" frames)
+        add_test(NAME mslug5_start_mission_option_vs_mame
+                 COMMAND Python3::Interpreter -I ${PROJECT_SOURCE_DIR}/tools/verify_mission.py
+                         --exe $<TARGET_FILE:mslug5> --roms ${PD_ROMS}
+                         --inputs ${m4}_inputs.txt --reference ${m4}_fingerprints.txt
+                         --frames ${frames} --date ${date} --known-differences ${m4}_option_known_vblank.txt
+                         --output ${CMAKE_CURRENT_BINARY_DIR}/mslug5_start_mission_option_fingerprints_port.txt)
+        set_tests_properties(mslug5_start_mission_option_vs_mame PROPERTIES LABELS mslug5 ENVIRONMENT "PD_START_MISSION=4")
+    endif()
     # Phase 3: games recorded by hand in MAME (grabar_partida.bat, empty NVRAM), replayed by
     # mame_run.py --replay --name NAME into PD_ANALYSIS/phase3/play: mslug5_play_<NAME>_vs_mame.
     # <NAME>_known_vblank.txt: VBlanks that differ only in the stack (docs/PHASE3_RECOMP.md).

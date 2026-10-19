@@ -19,6 +19,14 @@ static const ProfileWindow WINDOWS[] = {
     {0x009086, 0x009136},     /* developer pause: SELECT + D (copy at $7002(a5)) */
     {0x00988A, 0x009B26},     /* "SET DEBUG DIP": names, item -> bit table (0x9A98), toggle (0x9AD4) */
     {0x0497A6, 0x0497B4},     /* BLOOD soft dip check (tst.b 0x10FD92) */
+    {0x047578, 0x04758A},     /* new game: start mission set to 0 (0x47584 -> 0x4823A) */
+    {0x0477E4, 0x047800},     /* mission controller: loads the mission to start at (0x477EE) */
+    {0x0479B6, 0x0479C0},     /* section byte set to 0xFF once the mission runs (0x479BA) */
+    {0x047E92, 0x047EAC},     /* next mission at the end of one (0x47E9A) */
+    {0x04823A, 0x048262},     /* the start mission setter */
+    {0x01BE84, 0x01BE96},     /* player tables: 0x10D450, 0x10D460 */
+    {0x01C3DC, 0x01C454},     /* weapon pickup: records (0x1C298), ammo +0xC, weapon +4 */
+    {0x04E854, 0x04E948},     /* status object: character $98, lives $99 (from the BIOS lives option) */
 };
 
 const GameProfile game_profile = {
@@ -26,7 +34,7 @@ const GameProfile game_profile = {
     .subtitle = "",
     .windows = WINDOWS,
     .n_windows = (int)(sizeof WINDOWS / sizeof WINDOWS[0]),
-    .windows_sha256 = "1889ee4875346df5247abd23a0a0d08ee3229ad747cff04eb19ef2468b78e233",
+    .windows_sha256 = "593b02ffb856618eeb0fe7aceed83a67b7ded677552b9b5f29c43c3d5e8341a1",
     .vehicles = NULL,
     .n_vehicles = 0,
     .sounds = NULL,
@@ -64,6 +72,40 @@ const GameProfile game_profile = {
      * BLOOD); the BIOS keeps them from 0x10FD8A, so BLOOD is 0x10FD92, read by 0x497A6. */
     .blood_word = 0x10FD92u,
     .blood_mask = 0xFF00u,
+
+    /* Mission and section to start at: 0x10D680 / 0x10D681 ($5680(a5)). A new game sets both to 0
+     * (0x47584, after the game's "How to play", which is mission 8); the mission controller loads
+     * them at 0x477EE after the soldier select (scripted game: set at frame 5401, loaded at 6293).
+     * Missions 0-4; 6 and 7 are the attract demos, 8 "How to play". */
+    .start_mission = 0x10D680u,
+    .missions = 5,
+    /* Current mission: the mission controller's $7C (0x100B30 + 0x7C), written at the start of a
+     * mission (0x477EE) and by the next-mission step at its end (0x47E9A). Player 1's score:
+     * 0x10DE14, 8 BCD digits (as shown on the HUD). */
+    .mission_now = 0x100BACu,
+    .score_p1 = 0x10DE14u,
+
+    /* Players. Tables 0x10D450 / 0x10D460 ($5450(a5)), a block of 0x10 bytes per player:
+     * +2 shot counter, +3 sub-type, +4 weapon, +5 previous weapon, +6 grenade type, +7 bombs,
+     * +0xC ammo (word, 0xFFFF = infinite). Player objects 0x100CB8 / 0x100DA8 ($8C: their table,
+     * $78: player). Status objects 0x1009A8 / 0x100A6C: $98 character (internal: Marco 0, ...),
+     * $99 lives. In game: BIOS player status 1 and the player object pointing to its table. */
+    .player_table = 0x10D450u,
+    .table_stride_byte = 0x10,
+    .table_stride_word = 0x10,
+    .table_shots = 2,
+    .table_subtype = 3,
+    .table_weapon = 4,
+    .table_bombs = 7,
+    .table_ammo = 0xC,
+    .player1_object = 0x100CB8u,
+    .player2_object = 0x100DA8u,
+    .object_table_ptr = 0x8C,
+    .player1_soldier = 0x100A40u,
+    .player2_soldier = 0x100B04u,
+    .soldier_internal = 1,
+    .player1_lives = 0x100A41u,
+    .player2_lives = 0x100B05u,
 
     /* Main loop: waits at 0xEF2-0xEFA (cmp.b -$7FE9(a5),-$7FEA(a5): VBlanks since the last logic
      * cycle against the game's own threshold) and exits at 0xEFC, storing the count at
