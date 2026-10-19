@@ -109,8 +109,8 @@ Oracle: `mame mslug5 -bios us -rompath "<workspace>\roms"`.
 | 1. Import Metal Slug 3's runtime and frontend with an empty `mslug5` descriptor and profile | **Closed** (2026-10-18). See `docs/PHASE1_IMPORT.md`. `ctest`: 85/85 (interpreter-only 81/81). |
 | 2. Metal Slug 5 hardware in the interpreter (NEO-PVC, encrypted M1, PCM2, banking) | **Closed** (2026-10-18). See `docs/PHASE2_HARDWARE.md`. Image and RAM identical to MAME (known stack-only VBlanks); audio not exact: the power-on alignment of 68000, Z80 and YM2610, deferred by the user to a later stage (with two Metal Slug 5-only corrections it is exact, but they break Metal Slug 3). `ctest`: 89/89. |
 | 3. Analysis and recompilation | **Closed** (2026-10-18). See `docs/PHASE3_RECOMP.md`. P1 and BIOS recompiled (no code runs from the NEO-PVC window); lockstep, scripted runs and the user's game `partida1` (13.4 min) pass against MAME (images identical; 48 known stack-only VBlanks). `ctest`: 92/92. |
-| 4. Profile and frontend | **Ready to close** (waiting for approval). See `docs/PHASE4_PROFILE.md` and `docs/BOSS_RUSH.md`. Every Metal Slug 3 option for Metal Slug 5, checked against MAME. `ctest`: 114/114. |
-| 5. Loader (MAME set decrypted at load) | Pending. |
+| 4. Profile and frontend | **Closed** (2026-10-18). See `docs/PHASE4_PROFILE.md` and `docs/BOSS_RUSH.md`. Every Metal Slug 3 option for Metal Slug 5, checked against MAME. `ctest`: 114/114. |
+| 5. Loader (MAME set decrypted at load) | **In progress.** See `docs/PHASE5_LOADER.md`. |
 | 6. Publishing (`AlmazProud/metal-slug-5-recomp`) | Pending. |
 
 ### Phase 4: result
