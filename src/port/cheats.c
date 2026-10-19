@@ -18,7 +18,18 @@ FILE *cheats_spawn_log;
 const char *const CHEATS_SOLDIER_NAME[4] = {"Marco", "Eri", "Tarma", "Fio"};
 
 static uint8_t *ram8(uint32_t a) { return &ng.ram[a & 0xFFFF]; }
-static void ram16(uint32_t a, uint16_t v) { ram8(a)[0] = (uint8_t)(v >> 8); ram8(a)[1] = (uint8_t)v; }
+
+/* The cheats' RAM writes; with PD_SPAWN_POKES they are logged as PD_POKE entries (frame - 1: the
+   cheats run before a frame or right after it, where a MAME run's PD_POKE of that frame lands). */
+static void poke8(uint32_t a, uint32_t v)
+{
+    *ram8(a) = (uint8_t)v;
+    if (cheats_spawn_log) {
+        fprintf(cheats_spawn_log, "%llu,%06X,%02X;", (unsigned long long)ng.frames - 1, 0x100000u | (a & 0xFFFF), (uint8_t)v);
+        fflush(cheats_spawn_log);
+    }
+}
+static void poke16(uint32_t a, uint16_t v) { poke8(a, v >> 8); poke8(a + 1, v & 0xFF); }
 static uint8_t rom8(uint32_t a) { return ng_roms.p[a]; }
 static uint16_t rom16(uint32_t a) { return (uint16_t)(ng_roms.p[a] << 8 | ng_roms.p[a + 1]); }
 
@@ -75,29 +86,29 @@ int cheats_give_weapon(int player, int weapon)
     uint32_t flag = game_profile.object_pickup_flag ? game_profile.object_pickup_flag : 0x94;
     uint8_t *now = ram8(field8(p, game_profile.table_weapon));
     if (game_profile.table_previous_weapon && *now != weapon)
-        *ram8(field8(p, game_profile.table_previous_weapon)) = *now;
-    *now = (uint8_t)weapon;
-    *ram8(field8(p, game_profile.table_subtype)) = rom8(game_profile.rom_weapon_subtype + weapon * game_profile.rom_weapon_subtype_stride);
-    *ram8(field8(p, game_profile.table_shots)) = 0;
-    ram16(field16(p, game_profile.table_ammo), rom16(game_profile.rom_weapon_ammo + weapon * game_profile.rom_weapon_ammo_stride));
-    *ram8(obj + flag) = game_profile.rom_weapon_flag ? rom8(game_profile.rom_weapon_flag + weapon) : 0;
-    if (game_profile.rom_weapon_flag) *ram8(obj + flag + 1) = 0;
+        poke8(field8(p, game_profile.table_previous_weapon), *now);
+    poke8(field8(p, game_profile.table_weapon), (uint32_t)weapon);
+    poke8(field8(p, game_profile.table_subtype), rom8(game_profile.rom_weapon_subtype + weapon * game_profile.rom_weapon_subtype_stride));
+    poke8(field8(p, game_profile.table_shots), 0);
+    poke16(field16(p, game_profile.table_ammo), rom16(game_profile.rom_weapon_ammo + weapon * game_profile.rom_weapon_ammo_stride));
+    poke8(obj + flag, game_profile.rom_weapon_flag ? rom8(game_profile.rom_weapon_flag + weapon) : 0);
+    if (game_profile.rom_weapon_flag) poke8(obj + flag + 1, 0);
     if (game_profile.rom_weapon_form && cheats_form(p) <= 1)        /* normal: 0 pistol, 1 weapon */
-        *ram8(obj + game_profile.object_form + 1) = (uint8_t)normal_form(p);
+        poke8(obj + game_profile.object_form + 1, (uint8_t)normal_form(p));
     return 1;
 }
 
 int cheats_set_bombs(int player, int n)
 {
     if (!cheats_in_game(player)) return 0;
-    *ram8(field8(player & 1, game_profile.table_bombs)) = (uint8_t)(n < 0 ? 0 : n > 99 ? 99 : n);
+    poke8(field8(player & 1, game_profile.table_bombs), (uint8_t)(n < 0 ? 0 : n > 99 ? 99 : n));
     return 1;
 }
 
 int cheats_set_lives(int player, int n)
 {
     if (!cheats_in_game(player)) return 0;
-    *ram8((player & 1) ? game_profile.player2_lives : game_profile.player1_lives) = (uint8_t)(n < 0 ? 0 : n > 9 ? 9 : n);
+    poke8((player & 1) ? game_profile.player2_lives : game_profile.player1_lives, (uint8_t)(n < 0 ? 0 : n > 9 ? 9 : n));
     return 1;
 }
 
@@ -117,12 +128,12 @@ int cheats_set_soldier(int player, int soldier)
     int p = player & 1, s = soldier & 3;
     uint32_t status = p ? game_profile.player2_soldier : game_profile.player1_soldier;
     if (game_profile.soldier_internal) {           /* the status object's character: next life */
-        *ram8(status) = INTERNAL[s];
+        poke8(status, INTERNAL[s]);
         return 1;
     }
-    *ram8(status) = (uint8_t)s;
-    *ram8(status - 1) = INTERNAL[s];
-    *ram8((p ? game_profile.player2_object : game_profile.player1_object) + game_profile.object_character) = INTERNAL[s];
+    poke8(status, (uint8_t)s);
+    poke8(status - 1, INTERNAL[s]);
+    poke8((p ? game_profile.player2_object : game_profile.player1_object) + game_profile.object_character, INTERNAL[s]);
     return 1;
 }
 
@@ -130,9 +141,28 @@ int cheats_set_soldier(int player, int soldier)
    Fat: the food routine (Metal Slug X 0xC0BF4, Metal Slug 3 0x22176) adds to the player's food
    counter (table_food) and requests form 2 at 0x780; the game then plays the transformation. The
    other forms are requested the same way. */
+/* A form as the cheat sees it: with the game's form table (Metal Slug 5), every fat form is
+   FORM_FAT (its fat form depends on the weapon class). */
+static int form_kind(int form)
+{
+    if (game_profile.form_table && rom8(game_profile.form_class + (uint32_t)form) == game_profile.fat_class) return FORM_FAT;
+    return form;
+}
+
 int cheats_form(int player)
 {
-    return *ram8(((player & 1) ? game_profile.player2_object : game_profile.player1_object) + game_profile.object_form);
+    return form_kind(*ram8(((player & 1) ? game_profile.player2_object : game_profile.player1_object) + game_profile.object_form));
+}
+
+/* With the game's form table: the form the game itself would request for that event (1 fat,
+   2 back to normal) from the current form and weapon. */
+static int table_form(int p, int event)
+{
+    uint32_t obj = p ? game_profile.player2_object : game_profile.player1_object;
+    uint32_t w = *ram8(field8(p, game_profile.table_weapon));
+    int wclass = rom8(game_profile.form_weapon_class + (w < game_profile.weapons ? w : 0));
+    int fclass = rom8(game_profile.form_class + *ram8(obj + game_profile.object_form));
+    return rom8(game_profile.form_table + (uint32_t)((event * 3 + wclass) * 4 + fclass));
 }
 
 /* Normal form is 0 with the pistol and 1 with (most) other weapons: a table in the ROM. */
@@ -150,8 +180,9 @@ int cheats_set_form(int player, int form)
     int now = *ram8(obj + game_profile.object_form);
     if (game_profile.form_normal_first && now > FORM_FAT) form = FORM_NORMAL;      /* 0 / 1 normal, 2 fat */
     keep_fat[p] = form == FORM_FAT;
-    ram16(field16(p, game_profile.table_food), keep_fat[p] ? game_profile.fat_food : 0);
-    *ram8(obj + game_profile.object_form + 1) = (uint8_t)(form == FORM_NORMAL ? normal_form(p) : form);
+    poke16(field16(p, game_profile.table_food), keep_fat[p] ? game_profile.fat_food : 0);
+    int request = game_profile.form_table ? table_form(p, form == FORM_FAT ? 1 : 2) : form == FORM_NORMAL ? normal_form(p) : form;
+    poke8(obj + game_profile.object_form + 1, (uint8_t)request);
     cheats_apply();
     return 1;
 }
@@ -275,9 +306,9 @@ void cheats_frame(void)
     for (int p = 0; p < 2; p++) {
         if (!keep_fat[p]) continue;
         uint32_t obj = p ? game_profile.player2_object : game_profile.player1_object;
-        int form = *ram8(obj + game_profile.object_form), pending = *ram8(obj + game_profile.object_form + 1);
+        int form = form_kind(*ram8(obj + game_profile.object_form)), pending = form_kind(*ram8(obj + game_profile.object_form + 1));
         if (!cheats_in_game(p) || (form != FORM_FAT && pending != FORM_FAT)) { keep_fat[p] = 0; cheats_apply(); continue; }
-        ram16(field16(p, game_profile.table_food), game_profile.fat_food);
+        poke16(field16(p, game_profile.table_food), game_profile.fat_food);
     }
 }
 

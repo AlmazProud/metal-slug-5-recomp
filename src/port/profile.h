@@ -144,6 +144,13 @@ typedef struct {
     const CheatForm *forms;
     int n_forms;
     uint32_t rom_weapon_form;
+    /* The game's form table (0: Metal Slug X and 3, the forms are requested as they are): the
+       requested form is form_table[(event * 3 + weapon class) * 4 + form class], with the weapon
+       class from form_weapon_class (a byte per weapon) and the current form's class from
+       form_class (a byte per form). Event 1 makes the soldier fat (form class fat_class), event 2
+       brings him back to normal (Metal Slug 5: 0x1C238, 0x1C1C4, 0x1C1D8). */
+    uint32_t form_table, form_weapon_class, form_class;
+    uint8_t fat_class;
     uint32_t table_food;
     const char *form_help;
     /* 1: from a form other than normal and fat the cheat goes back to normal first (the only
