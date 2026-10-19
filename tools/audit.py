@@ -45,6 +45,11 @@ BYTE_ARRAY_OK = {
     # data. They let the Metal Slug 3 regression target load MAME's encrypted set; kept by the
     # user's decision in that port (Phase 6). They arrive with the import (Phase 1).
     "src/games/mslug3/cmc_tables.h",
+    # Metal Slug 5's decryption key tables (NEO-PVC, PCM2, CMC50 and the M1's, learned from MAME as
+    # a black box with synthetic patterns, docs/PHASE5_LOADER.md): no game data. They let the port
+    # load MAME's encrypted set, the game's only copy; in the repository by the user's decision
+    # (Phase 5, 2026-10-18).
+    "src/games/mslug5/crypt_tables.h",
 }
 
 
