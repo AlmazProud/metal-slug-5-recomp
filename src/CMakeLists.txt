@@ -240,6 +240,24 @@ if(EXISTS "${PD_ROMS}/mslug5_game_m68k")
                          --output ${CMAKE_CURRENT_BINARY_DIR}/mslug5_start_mission_option_fingerprints_port.txt)
         set_tests_properties(mslug5_start_mission_option_vs_mame PROPERTIES LABELS mslug5 ENVIRONMENT "PD_START_MISSION=4")
     endif()
+    # Phase 4: the cheats (PD_CHEAT) against a MAME run that writes the same bytes at the same
+    # moments (PD_POKE in cheats_poke.txt): the Heavy Machine Gun and the Enemy Chaser through the
+    # game's own routine (the bytes it changed, PD_SPAWN_POKES), 63 bombs, 7 lives, Eri.
+    set(ch ${PD_ANALYSIS}/phase4/cheats/cheats)
+    if(EXISTS "${ch}_fingerprints.txt" AND EXISTS "${ch}_known_vblank.txt")
+        file(READ "${ch}_date.txt" date)
+        file(READ "${ch}_frames.txt" frames)
+        string(STRIP "${date}" date)
+        string(STRIP "${frames}" frames)
+        add_test(NAME mslug5_cheats_vs_mame
+                 COMMAND Python3::Interpreter -I ${PROJECT_SOURCE_DIR}/tools/verify_mission.py
+                         --exe $<TARGET_FILE:mslug5> --roms ${PD_ROMS}
+                         --inputs ${ch}_inputs.txt --reference ${ch}_fingerprints.txt
+                         --frames ${frames} --date ${date} --known-differences ${ch}_known_vblank.txt
+                         --output ${CMAKE_CURRENT_BINARY_DIR}/mslug5_cheats_fingerprints_port.txt)
+        set_tests_properties(mslug5_cheats_vs_mame PROPERTIES LABELS mslug5
+                             ENVIRONMENT "PD_CHEAT=6700,weapon,0,5\;7300,weapon,0,12\;7500,bombs,0,63\;7650,lives,0,7\;7800,soldier,0,1")
+    endif()
     # Phase 3: games recorded by hand in MAME (grabar_partida.bat, empty NVRAM), replayed by
     # mame_run.py --replay --name NAME into PD_ANALYSIS/phase3/play: mslug5_play_<NAME>_vs_mame.
     # <NAME>_known_vblank.txt: VBlanks that differ only in the stack (docs/PHASE3_RECOMP.md).

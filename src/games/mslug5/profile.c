@@ -9,6 +9,16 @@
 
 static const int SOUND_COUNT = 0;
 
+/* Weapons 0x00-0x12: the records at 0x1C298 (weapon, class, sub-type, -, initial ammo, ammo per
+   extra pickup, announcer voice), Metal Slug 3's layout. 0-15 have Metal Slug 3's classes and ammo
+   (names as there); 16-18 are not identified yet. */
+static const char *const WEAPONS[] = {
+    "Pistol", "Big blast (unused?)", "Shotgun", "Rocket Launcher", "Flame Shot",
+    "Heavy Machine Gun", "Laser Shot", "Big Shotgun", "Big Rocket Launcher", "Big Flame Shot",
+    "Big Heavy Machine Gun", "Big Laser Shot", "Enemy Chaser", "Iron Lizard", "Drop Shot",
+    "Super Grenade", "Weapon 16", "Weapon 17", "Weapon 18",
+};
+
 /* Code that must be identical to the reference copy's for this profile to be used (profile.c). */
 static const ProfileWindow WINDOWS[] = {
     {0x0008D0, 0x0008EA},     /* debug dips cleared on boot (0x8DE) */
@@ -25,7 +35,8 @@ static const ProfileWindow WINDOWS[] = {
     {0x047E92, 0x047EAC},     /* next mission at the end of one (0x47E9A) */
     {0x04823A, 0x048262},     /* the start mission setter */
     {0x01BE84, 0x01BE96},     /* player tables: 0x10D450, 0x10D460 */
-    {0x01C3DC, 0x01C454},     /* weapon pickup: records (0x1C298), ammo +0xC, weapon +4 */
+    {0x01C298, 0x01C454},     /* weapon records (0x1C298, 10 bytes), the give routine (0x1C356: D0
+                                 player, D1 weapon) and its pickup: ammo +0xC, weapon +4, previous +5 */
     {0x04E854, 0x04E948},     /* status object: character $98, lives $99 (from the BIOS lives option) */
 };
 
@@ -34,7 +45,7 @@ const GameProfile game_profile = {
     .subtitle = "",
     .windows = WINDOWS,
     .n_windows = (int)(sizeof WINDOWS / sizeof WINDOWS[0]),
-    .windows_sha256 = "593b02ffb856618eeb0fe7aceed83a67b7ded677552b9b5f29c43c3d5e8341a1",
+    .windows_sha256 = "0594ad08e3d5d743ea416db33c7f70bc7ca2016fba51e54c2b802da3acab277e",
     .vehicles = NULL,
     .n_vehicles = 0,
     .sounds = NULL,
@@ -106,6 +117,18 @@ const GameProfile game_profile = {
     .soldier_internal = 1,
     .player1_lives = 0x100A41u,
     .player2_lives = 0x100B05u,
+    /* Weapons: the cheat calls the game's own routine 0x1C356 (D0 player, D1 weapon), the one its
+     * weapon items call (0xB4506): table, ammo, form and announcer as when picked up. Its pickup
+     * keeps the previous weapon at +5 and clears the player object's $A1. */
+    .weapons = sizeof WEAPONS / sizeof WEAPONS[0],
+    .weapon_names = WEAPONS,
+    .give_routine = 0x1C356u,
+    .rom_weapon_subtype = 0x1C29Au,
+    .rom_weapon_subtype_stride = 10,
+    .rom_weapon_ammo = 0x1C29Cu,
+    .rom_weapon_ammo_stride = 10,
+    .object_pickup_flag = 0xA1,
+    .table_previous_weapon = 5,
 
     /* Main loop: waits at 0xEF2-0xEFA (cmp.b -$7FE9(a5),-$7FEA(a5): VBlanks since the last logic
      * cycle against the game's own threshold) and exits at 0xEFC, storing the count at
