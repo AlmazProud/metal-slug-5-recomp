@@ -1,6 +1,6 @@
 # Phase 6: publishing on GitHub
 
-**State:** done (2026-10-18), waiting for the user's approval to close. Public repository and
+**State:** closed (2026-10-18). Public repository and
 release v1.0.0, each step with the user's explicit OK.
 
 Metal Slug 3's method (`C:\Projecto Decompile\MS3_Port\repo\docs\PHASE6_RELEASE.md`):
