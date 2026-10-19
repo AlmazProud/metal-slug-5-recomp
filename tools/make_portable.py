@@ -3,12 +3,15 @@ and nothing is written to the computer it runs on.
 
 Usage:
   python tools/make_portable.py --out E:\\ [--build repo/build]
-                                [--mslug3 <root>/roms] [--mslugx <root>/../roms]
+                                [--mslug5 <root>/roms] [--mslug3 <root>/../MS3_Port/roms]
+                                [--mslugx <root>/../roms]
 
-For each game whose files are given, <out>/Metal Slug/<game>/ gets the executable, SDL3.dll, the
-licenses, a "game" folder with the user's own copy of the PC release files (copied from the given
-folder: the DotEmu files only, not MAME sets) and an empty "save" folder. With "save" next to the
-executable the port runs in portable mode: settings, SRAM, saved games and the title logo go there.
+For each game whose executable is built and whose files are found, <out>/Metal Slug/<game>/ gets
+the executable, SDL3.dll, the licenses, a "game" folder with the user's own copy of the game files
+(copied from the given folder: the DotEmu-layout files only, not MAME sets; for Metal Slug 5, the
+decrypted reference files made from the user's MAME set) and an empty "save" folder. With "save"
+next to the executable the port runs in portable mode: settings, SRAM, saved games and the title
+logo go there. Games without an executable or files are skipped.
 
 The output holds the user's game files: it is for the user only, never published or committed.
 """
@@ -22,7 +25,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 ROOT = REPO.parent
 
-GAMES = {"mslug3": "Metal Slug 3", "mslugx": "Metal Slug X"}
+GAMES = {"mslug5": "Metal Slug 5", "mslug3": "Metal Slug 3", "mslugx": "Metal Slug X"}
 
 README = """{title} - portable native port
 
@@ -52,14 +55,13 @@ el menu; Share saca una captura). Las capturas van a la carpeta "screenshots" de
 def copy_game(game: str, files: Path, build: Path, out: Path) -> int:
     exe = build / "src" / f"{game}.exe"
     dll = build / "src" / "SDL3.dll"
-    for f in (exe, dll):
-        if not f.is_file():
-            print(f"missing {f}: build first", file=sys.stderr)
-            return 1
-    data = sorted(p for p in files.iterdir() if p.is_file() and p.name.startswith(f"{game}_"))
-    if not data:
-        print(f"no {game}_* files in {files}", file=sys.stderr)
+    if not dll.is_file():
+        print(f"missing {dll}: build first", file=sys.stderr)
         return 1
+    data = sorted(p for p in files.iterdir() if p.is_file() and p.name.startswith(f"{game}_")) if files.is_dir() else []
+    if not exe.is_file() or not data:
+        print(f"{GAMES[game]}: skipped ({'no ' + exe.name if not exe.is_file() else f'no {game}_* files in {files}'})")
+        return 0
     dest = out / "Metal Slug" / GAMES[game]
     (dest / "game").mkdir(parents=True, exist_ok=True)
     (dest / "save").mkdir(exist_ok=True)
@@ -84,7 +86,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--out", type=Path, required=True, help="destination (a drive or a folder)")
     ap.add_argument("--build", type=Path, default=REPO / "build")
-    ap.add_argument("--mslug3", type=Path, default=ROOT / "roms", help="folder with the mslug3_* files")
+    ap.add_argument("--mslug5", type=Path, default=ROOT / "roms", help="folder with the mslug5_* files")
+    ap.add_argument("--mslug3", type=Path, default=ROOT.parent / "MS3_Port" / "roms", help="folder with the mslug3_* files")
     ap.add_argument("--mslugx", type=Path, default=ROOT.parent / "roms", help="folder with the mslugx_* files")
     a = ap.parse_args()
     if REPO in a.out.resolve().parents or a.out.resolve() == REPO:
