@@ -54,6 +54,7 @@ int cheats_weapons(void) { return (int)game_profile.weapons; }
 
 static int spawn_item(int kind);
 static int normal_form(int p);
+static int give_player = -1, give_weapon = -1;
 
 /* With weapon items (Metal Slug 3): the weapon's item appears in front of player 1 and the game
  * gives it when picked up (sprite, announcer, ammo). Otherwise, the same effect as the game's own
@@ -64,6 +65,11 @@ int cheats_give_weapon(int player, int weapon)
 {
     if (!cheats_in_game(player) || weapon < 0 || weapon >= cheats_weapons()) return 0;
     if (game_profile.item_type && game_profile.weapon_items[weapon]) return spawn_item(game_profile.weapon_items[weapon]);
+    if (game_profile.give_routine) {             /* the game's own routine (Metal Slug 5) */
+        give_player = player & 1;
+        give_weapon = weapon;
+        return 1;
+    }
     int p = player & 1;
     uint32_t obj = object_of(p);
     uint32_t flag = game_profile.object_pickup_flag ? game_profile.object_pickup_flag : 0x94;
@@ -183,6 +189,40 @@ int cheats_spawn_vehicle(int vehicle)
     return vehicle >= 0 && vehicle < game_profile.n_vehicles && cheats_spawn_type(game_profile.vehicles[vehicle].type);
 }
 
+/* Calls a routine of the game with its stack (and the spawn record, `len` bytes of r) below the
+   game's stack, and puts that memory back afterwards: only the routine's effects stay (the game
+   may use that area later, e.g. the VBlank interrupt). Logs the RAM the call changed as PD_POKE
+   entries (PD_SPAWN_POKES). */
+static void call_game(uint32_t routine, uint32_t d[8], uint32_t a[8], const uint8_t *r, int len)
+{
+    uint32_t sp = ng_cpu.a[7] & ~1u, base = sp - 0x400;
+    uint8_t scratch[0x400];
+    static uint8_t before[sizeof ng.ram];
+    if (cheats_spawn_log) memcpy(before, ng.ram, sizeof ng.ram);
+    for (uint32_t i = 0; i < sizeof scratch; i++) scratch[i] = *ram8(base + i);
+    for (int i = 0; i < len; i++) bus_w8(base + (uint32_t)i, r[i]);
+    if (len) a[0] = base;
+    a[5] = 0x108000;
+    a[7] = sp - 0x100;
+    ng_call68k(routine, d, a, 2000000);
+    for (uint32_t i = 0; i < sizeof scratch; i++) *ram8(base + i) = scratch[i];
+    if (cheats_spawn_log) {
+        for (uint32_t i = 0; i < sizeof ng.ram; i++)
+            if (ng.ram[i] != before[i])
+                fprintf(cheats_spawn_log, "%llu,%06X,%02X;", (unsigned long long)ng.frames - 1, 0x100000u + i, ng.ram[i]);
+        fflush(cheats_spawn_log);
+    }
+}
+
+/* The weapon cheat with the game's routine: D0 player, D1 weapon. */
+static void give_now(int player, int weapon)
+{
+    uint32_t d[8] = {0}, a[8] = {0};
+    d[0] = (uint32_t)player;
+    d[1] = (uint32_t)weapon;
+    call_game(game_profile.give_routine, d, a, NULL, 0);
+}
+
 static void spawn_now(int type, int param)
 {
     uint8_t r[20] = {0};
@@ -199,28 +239,9 @@ static void spawn_now(int type, int param)
     const struct { uint8_t at; uint32_t v; } w[3] = {
         {game_profile.spawn_type_at, (uint32_t)type}, {game_profile.spawn_x_at, x & 0xFFFF}, {game_profile.spawn_y_at, y & 0xFFFF}};
     for (int i = 0; i < 3; i++) { r[w[i].at] = (uint8_t)(w[i].v >> 8); r[w[i].at + 1] = (uint8_t)w[i].v; }
-    /* The record and the call's stack go below the game's stack, and that memory is put back
-       afterwards: only the routine's effects stay (the game may be using that area later, e.g.
-       the VBlank interrupt). */
-    uint32_t sp = ng_cpu.a[7] & ~1u, rec = sp - 0x400;
-    uint8_t scratch[0x400];
-    static uint8_t before[sizeof ng.ram];
-    if (cheats_spawn_log) memcpy(before, ng.ram, sizeof ng.ram);
-    for (uint32_t i = 0; i < sizeof scratch; i++) scratch[i] = *ram8(rec + i);
-    for (int i = 0; i < len; i++) bus_w8(rec + i, r[i]);
     uint32_t d[8] = {0}, a[8] = {0};
-    a[0] = rec;
-    a[5] = 0x108000;
     a[6] = game_profile.spawn_parent;
-    a[7] = sp - 0x100;
-    ng_call68k(game_profile.spawn_routine, d, a, 2000000);
-    for (uint32_t i = 0; i < sizeof scratch; i++) *ram8(rec + i) = scratch[i];
-    if (cheats_spawn_log) {                         /* the RAM the call changed, as PD_POKE entries */
-        for (uint32_t i = 0; i < sizeof ng.ram; i++)
-            if (ng.ram[i] != before[i])
-                fprintf(cheats_spawn_log, "%llu,%06X,%02X;", (unsigned long long)ng.frames - 1, 0x100000u + i, ng.ram[i]);
-        fflush(cheats_spawn_log);
-    }
+    call_game(game_profile.spawn_routine, d, a, r, len);
 }
 
 /* Every frame: keeps a fat soldier fat (food counter topped up) until he dies or the cheat is
@@ -246,6 +267,10 @@ void cheats_frame(void)
     if (spawn_type >= 0 && ng_cpu.pc >= game_profile.wait_start && ng_cpu.pc < game_profile.wait_end) {
         if (cheats_in_game(0)) spawn_now(spawn_type, spawn_param);
         spawn_type = -1;
+    }
+    if (give_player >= 0 && ng_cpu.pc >= game_profile.wait_start && ng_cpu.pc < game_profile.wait_end) {
+        if (cheats_in_game(give_player)) give_now(give_player, give_weapon);
+        give_player = -1;
     }
     for (int p = 0; p < 2; p++) {
         if (!keep_fat[p]) continue;

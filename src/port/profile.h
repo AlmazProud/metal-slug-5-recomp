@@ -113,6 +113,9 @@ typedef struct {
        table's previous weapon, which the pickup sets to the weapon it replaces (0: none). */
     uint32_t object_pickup_flag;
     uint32_t table_previous_weapon;
+    /* The game's own "give a weapon" routine (D0 player, D1 weapon), the one its weapon items
+       call (0: none). The weapon cheat calls it while the game waits for the VBlank. */
+    uint32_t give_routine;
     /* Soldier: 1 if player*_soldier holds only the internal character (Marco 0, Tarma 1, Eri 2,
        Fio 3), used from the next life; 0 (Metal Slug X): the soldier select index, with the
        internal character in the byte before it and in the player object. */
