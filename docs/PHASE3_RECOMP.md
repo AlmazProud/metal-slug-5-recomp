@@ -1,6 +1,6 @@
 # Phase 3: analysis and recompilation of Metal Slug 5
 
-**State:** ready to close (waiting for the user's approval).
+**State:** closed (2026-10-18).
 
 ## Plan
 
@@ -18,7 +18,7 @@
 The distributable build stays interpreter-only (`-DPD_RECOMPILED=OFF`); the recompiled build is
 the development and verification target, as in Metal Slug 3.
 
-## Result so far
+## Result
 
 - **Where the code runs** (MAME, `docs/PHASE3_COVERAGE.md`): P1 and the BIOS. **No code runs from
   the NEO-PVC window** (1 472 M traced instructions in four runs), so the dispatcher did not

@@ -108,10 +108,28 @@ Oracle: `mame mslug5 -bios us -rompath "<workspace>\roms"`.
 | 0. Reconnaissance (encryption schemes, black-box decryption, ROM map, NEO-PVC, oracle) | **Closed** (2026-10-18). See `docs/ROM_MAP.md`. All five regions decrypted as MAME does, byte for byte. |
 | 1. Import Metal Slug 3's runtime and frontend with an empty `mslug5` descriptor and profile | **Closed** (2026-10-18). See `docs/PHASE1_IMPORT.md`. `ctest`: 85/85 (interpreter-only 81/81). |
 | 2. Metal Slug 5 hardware in the interpreter (NEO-PVC, encrypted M1, PCM2, banking) | **Closed** (2026-10-18). See `docs/PHASE2_HARDWARE.md`. Image and RAM identical to MAME (known stack-only VBlanks); audio not exact: the power-on alignment of 68000, Z80 and YM2610, deferred by the user to a later stage (with two Metal Slug 5-only corrections it is exact, but they break Metal Slug 3). `ctest`: 89/89. |
-| 3. Analysis and recompilation | **Ready to close** (waiting for approval). See `docs/PHASE3_RECOMP.md`. P1 and BIOS recompiled (no code runs from the NEO-PVC window); lockstep, scripted runs and the user's game `partida1` (13.4 min) pass against MAME (images identical; 48 known stack-only VBlanks). `ctest`: 92/92. |
-| 4. Profile and frontend | Pending. |
+| 3. Analysis and recompilation | **Closed** (2026-10-18). See `docs/PHASE3_RECOMP.md`. P1 and BIOS recompiled (no code runs from the NEO-PVC window); lockstep, scripted runs and the user's game `partida1` (13.4 min) pass against MAME (images identical; 48 known stack-only VBlanks). `ctest`: 92/92. |
+| 4. Profile and frontend | **In progress.** See `docs/PHASE4_PROFILE.md`. |
 | 5. Loader (MAME set decrypted at load) | Pending. |
 | 6. Publishing (`AlmazProud/metal-slug-5-recomp`) | Pending. |
+
+### Phase 3: result
+
+Details in `docs/PHASE3_RECOMP.md` and `docs/PHASE3_COVERAGE.md`.
+
+- **Recompiled:** `mslug5.exe` runs P1 and the BIOS translated to C (the user's reference files,
+  by SHA-256), Musashi as the fallback. **No code runs from the NEO-PVC window** (1 472 M traced
+  instructions): the dispatcher did not change. Code in RAM (the attract's ROM checksum) is
+  interpreted.
+- **Coverage:** the bot, the attract and scripted recordings and the user's game `partida1`
+  (13.4 min, `grabar_partida.bat`), by MAME playback; 64 700 P1 addresses, all reached by the
+  static analysis.
+- **Against MAME:** images identical in every run; RAM identical except known stack-only VBlanks
+  (`partida1`: 48, four interrupt events and their residue, one transient byte). MAME's two
+  replays of the recording differed at boot (VBlanks 69-94, RAM only): the reference is the one
+  that matches the port.
+- **Lockstep** (`lockstep_mslug5_reset`, `_game`): NEO-PVC in the machine model, dumps of version 3.
+- **Speed:** the user's game 43 s recompiled against 104 s interpreted. `ctest`: 92/92.
 
 ### Phase 2: result
 
