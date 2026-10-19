@@ -46,6 +46,17 @@ static const CheatVehicle VEHICLES[] = {
     {0x24, "Cannon tank (variant)"}, {0x28, "Walker (unknown)"},
 };
 
+/* Boss Rush (docs/BOSS_RUSH.md): each confirmed boss's section in the developers' stage table
+   (mission byte, record). Mission 5's BOSS B and the two sections before it are left out (not
+   identified in stage 1). */
+static const ProfileRush RUSH[] = {
+    {0, 8, 1},      /* Mission 1: the red tank */
+    {1, 5, 1},      /* Mission 2: the airship */
+    {2, 6, 1},      /* Mission 3: the cannon machine */
+    {3, 3, 1},      /* Mission 4: the sand worm / land submarine */
+    {4, 6, 1},      /* Mission 5: the final boss */
+};
+
 /* The bosses' code (docs/BOSS_RUSH.md, stage 1): the routines seen in their objects, alive and
    defeated, with room. No names yet: the bar shows "BOSS". */
 static const ProfileBoss BOSSES[] = {
@@ -215,6 +226,11 @@ const GameProfile game_profile = {
     .object_dead = 0x61,
     .bosses = BOSSES,
     .n_bosses = (int)(sizeof BOSSES / sizeof BOSSES[0]),
+    .rush = RUSH,
+    .n_rush = (int)(sizeof RUSH / sizeof RUSH[0]),
+    .rush_weapon = 5,                         /* Heavy Machine Gun */
+    .stage_start_first = 0x0477E4u,
+    .stage_start_last = 0x047800u,
 
     /* Title screen logo (attract, from frame ~911 after power-on with empty SRAM): sprites 344-376
      * ("METAL SLUG" and the 5) and 380 ("TM", first tile 0x44855, used to recognize the moment);

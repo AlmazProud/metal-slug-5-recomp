@@ -7,8 +7,8 @@ its own within Phase 4). Worked in stages, each one closed with a report, as in 
 |---|---|---|
 | 0 | How to reach every boss without playing the whole game | **Closed** (2026-10-18) |
 | 1 | Identify the bosses (code, life, death) | **Closed** (2026-10-18) |
-| 2 | Boss health bar | **Done** (2026-10-18), waiting for approval |
-| 3 | Boss Rush | Pending |
+| 2 | Boss health bar | **Closed** (2026-10-18) |
+| 3 | Boss Rush | **Done** (2026-10-18), waiting for approval |
 
 ## Stage 0: the developer stage table
 
@@ -98,3 +98,25 @@ profile: the objects' list `0x100BF4` (the same links as Metal Slug 3: next at `
   frame 7000, `10/5000` then `0/5000 dead` at 7020). In the window, a state saved in the airship
   fight shows the bar at the right edge with "BOSS". The final boss took no damage from the bot
   and `BOSS B` was not reached, so their bars were not seen.
+
+## Stage 3: Boss Rush
+
+Metal Slug 3's Boss Rush (`src/port/bossrush.c`, Game modes > Boss Rush) with Metal Slug 5's
+profile: the boss sections of stage 1 in order and the Heavy Machine Gun at the start. No code
+changed: the write hook on the start bytes (`0x10D680`) sees the game ask for another section when
+a boss section ends (Metal Slug 5's next-mission step writes the mission, then clears the section:
+`0x47E9E`) and writes the next boss's mission and record in its place.
+
+- **The run:** Mission 1's red tank (record 8), Mission 2's airship (5), Mission 3's cannon machine
+  (6), Mission 4's sand worm (3) and the final boss (Mission 5, 6): 5 bosses. After the last one the
+  game's ending follows ("MISSION ALL OVER") and the summary opens. Mission 5's `BOSS B` and the
+  two sections before it are left out (stage 1: not identified).
+- **Unlocked** by completing the game, as in Metal Slug 3: the final boss's defeat is the last
+  mission's step (mission byte 4 -> 5).
+- **Tests:** `mslug5_bossrush_full` (`PD_BOSSRUSH=1`, the "D kills every enemy" dip and a bot,
+  `analysis\boss_rush\stage3\bot_d.txt`): the five bosses in a row, cleared at frame 14 119;
+  screenshots after each step show the next boss's mission. `mslug5_progress_game_completed`: from
+  the final boss's section, the game completed at frame 9017. Window check `rushrun`: the Boss Rush
+  card starts the run (the game's own "How to play" comes first, as in a new game).
+- Not against MAME: the jumps between bosses are the port's own change to the game; each fight is
+  the game's (stage 1).

@@ -301,6 +301,29 @@ if(EXISTS "${PD_ROMS}/mslug5_game_m68k")
         ENVIRONMENT "PD_BOSSBAR=1;PD_DEVMODE=1;PD_DIPS=8000;PD_POKE=5800,10D680,0\;5800,10D681,8\;7000,101F00,0\;7000,101F01,A"
         PASS_REGULAR_EXPRESSION "bossbar 7000: boss 101EAC 10/5000
 bossbar 7020: boss 101EAC 0/5000 dead")
+    # Boss Rush (docs/BOSS_RUSH.md, stage 3): every confirmed boss in a row in one game, with the
+    # "D kills every enemy" dip and a bot (analysis/boss_rush/stage3/bot_d.txt): each boss section
+    # leads to the next, the last one to the ending. And the unlock: completing the game (the last
+    # mission's step, 4 -> 5) from the final boss's section.
+    set(rush3 ${PD_ANALYSIS}/boss_rush/stage3/bot_d.txt)
+    if(EXISTS "${rush3}")
+        add_test(NAME mslug5_bossrush_full
+                 COMMAND mslug5 --roms ${PD_ROMS} --headless --no-audio --frames 14200 --script ${rush3}
+                         --date 2026-10-18-00-59-09-0)
+        set_tests_properties(mslug5_bossrush_full PROPERTIES LABELS mslug5
+            ENVIRONMENT "PD_BOSSRUSH=1;PD_DEVMODE=1;PD_DIPS=8009"
+            PASS_REGULAR_EXPRESSION "bossrush 7573: next boss, 1/5 bosses defeated
+bossrush 8855: next boss, 2/5 bosses defeated
+bossrush 9786: next boss, 3/5 bosses defeated
+bossrush 11415: next boss, 4/5 bosses defeated
+bossrush 14119: cleared, 5/5 bosses defeated")
+        add_test(NAME mslug5_progress_game_completed
+                 COMMAND mslug5 --roms ${PD_ROMS} --headless --no-audio --frames 9100 --script ${rush3}
+                         --date 2026-10-18-00-59-09-0)
+        set_tests_properties(mslug5_progress_game_completed PROPERTIES LABELS mslug5
+            ENVIRONMENT "PD_PROGRESS=${CMAKE_CURRENT_BINARY_DIR}/mslug5_progress_completed.ini;PD_DEVMODE=1;PD_DIPS=8009;PD_POKE=5800,10D680,4\;5800,10D681,6"
+            PASS_REGULAR_EXPRESSION "game completed at frame 9017")
+    endif()
     # Phase 4: the sound menu (src/games/mslug5/sounds.c, the profile's driver modes) is audible in
     # the middle of the user's game and, after closing it, the game stays identical.
     set(play1 ${PD_ANALYSIS}/phase3/play/partida1)
