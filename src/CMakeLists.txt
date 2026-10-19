@@ -180,8 +180,20 @@ if(EXISTS "${PD_ROMS}/mslug5_game_m68k")
     #   start: a credit, START, the game's "How to play", soldier select, Mission 1 with a bot.
     # RAM, palette and image on every VBlank / frame (verify_mission.py); <run>_known_vblank.txt
     # lists the VBlanks that differ only in the stack (docs/PHASE2_HARDWARE.md).
-    foreach(run attract start)
-        set(base ${PD_ANALYSIS}/phase2/${run}/${run})
+    # Phase 4 (docs/PHASE4_PROFILE.md): phase4/debug/* the same game with the developer mode,
+    # debug dips or red blood (<run>_env.txt: PD_DEVMODE, PD_DIPS, PD_BLOOD...), phase4/missions/*
+    # started at another mission (<run>_poke.txt: PD_POKE).
+    file(GLOB ms5_phase4_runs ${PD_ANALYSIS}/phase4/debug/*_fingerprints.txt
+                              ${PD_ANALYSIS}/phase4/missions/mission*_fingerprints.txt)
+    set(ms5_runs ${PD_ANALYSIS}/phase2/attract/attract ${PD_ANALYSIS}/phase2/start/start)
+    foreach(fp ${ms5_phase4_runs})
+        if(NOT fp MATCHES "_replay_fingerprints\\.txt$")
+            string(REGEX REPLACE "_fingerprints\\.txt$" "" base "${fp}")
+            list(APPEND ms5_runs ${base})
+        endif()
+    endforeach()
+    foreach(base ${ms5_runs})
+        get_filename_component(run "${base}" NAME)
         if(EXISTS "${base}_fingerprints.txt" AND EXISTS "${base}_date.txt" AND EXISTS "${base}_frames.txt")
             file(READ "${base}_date.txt" date)
             file(READ "${base}_frames.txt" frames)
@@ -191,13 +203,24 @@ if(EXISTS "${PD_ROMS}/mslug5_game_m68k")
             if(EXISTS "${base}_known_vblank.txt")
                 set(known --known-differences ${base}_known_vblank.txt)
             endif()
+            set(env)
+            if(EXISTS "${base}_poke.txt")
+                file(READ "${base}_poke.txt" poke)
+                string(STRIP "${poke}" poke)
+                string(REPLACE ";" "\;" poke "${poke}")     # several writes: kept in one variable
+                set(env "PD_POKE=${poke}")
+            endif()
+            if(EXISTS "${base}_env.txt")                  # PD_DEVMODE, PD_DIPS... (mame_run.py)
+                file(STRINGS "${base}_env.txt" run_env)
+                list(APPEND env ${run_env})
+            endif()
             add_test(NAME mslug5_${run}_vs_mame
                      COMMAND Python3::Interpreter -I ${PROJECT_SOURCE_DIR}/tools/verify_mission.py
                              --exe $<TARGET_FILE:mslug5> --roms ${PD_ROMS}
                              --inputs ${base}_inputs.txt --reference ${base}_fingerprints.txt
                              --frames ${frames} --date ${date} ${known}
                              --output ${CMAKE_CURRENT_BINARY_DIR}/mslug5_${run}_fingerprints_port.txt)
-            set_tests_properties(mslug5_${run}_vs_mame PROPERTIES LABELS mslug5)
+            set_tests_properties(mslug5_${run}_vs_mame PROPERTIES LABELS mslug5 ENVIRONMENT "${env}")
         endif()
     endforeach()
     # Phase 3: games recorded by hand in MAME (grabar_partida.bat, empty NVRAM), replayed by
