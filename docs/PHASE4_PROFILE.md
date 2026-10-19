@@ -71,6 +71,33 @@ the same run matches the port there).
 | `missions/mission2`-`mission5` | the scripted game started at Missions 2-5 (`PD_POKE` during the soldier select) |
 | `missions/mission4` + `PD_START_MISSION=4` | the "Start mission" option (`mslug5_start_mission_option_vs_mame`) |
 | `cheats/cheats` | Heavy Machine Gun and Enemy Chaser through the game's routine, 63 bombs, 7 lives, Eri |
+| `vehicles/vehicles` | the Metal Slug spawned in front of player 1 (ridden by the bot) |
+
+Also in the port: the sound menu in the middle of the user's game (`mslug5_sound_menu`), the
+title logo generated from the attract title (sprites 344-376 and the TM 380), fast boot to the
+game's first image (frame 301).
+
+## Sound driver
+
+Every sound is a mode command and a command. Music is ADPCM-B in modes `07` (`21`-`50`) and `19`
+(`D0`-`E0`), effects and voices ADPCM-A in `1A` (`20`-`DF`) and `18` (`19`-`E5`); the catalog
+(`tools/sound_catalog.py ... mslug5`, `src/games/mslug5/sounds.c`) has 440 sounds. `03` silences
+the driver but leaves the ADPCM-A sounds off until `07 20`, `08 20` and `0A A0` (what the game's
+boot sends after it): that is the sound menu's silence sequence. The sound menu takes the modes
+and the silence sequence from the game profile (Metal Slug X and 3 keep theirs).
+
+- **Names:** only the weapons' announcer voices, from the weapon records (`18 C3`-`D9`). Metal
+  Slug 5's samples are new recordings: none matches a named Metal Slug 3 sound (correlation of
+  the catalog audio below 0.95; the Heavy Machine Gun voice lasts 1.3 s against 1.9 s), so the
+  rest keep their numbers.
+- **Rumble:** no automatic table (no effect identified); the user can set it per sound.
+
+## Not offered for Metal Slug 5
+
+- **Transformations:** requesting each form (`$A0` of the player object; current form `$9F`)
+  shows no playable form like Metal Slug 3's (forms 3 and 4 only flash the soldier, 10 and 11
+  hang the game): the form cheat stays off.
+- **Weapons 16-18:** given with 200, 30 and 300 shots; not identified yet, listed by number.
 
 Each option was also checked to have an effect: without it, the run differs from MAME's.
 
@@ -84,6 +111,4 @@ Each option was also checked to have an effect: without it, the run differs from
 
 ## Pending
 
-- Sound catalog, the sound menu with Metal Slug 5's driver modes, rumble, weapon names 16-18.
-- Vehicles, transformations, boss bar and Boss Rush (Metal Slug 3's later options).
-- The frontend's texts.
+- Boss health bar and Boss Rush (Metal Slug 3's later options, a stage of their own there).
