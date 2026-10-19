@@ -5,8 +5,8 @@ its own within Phase 4). Worked in stages, each one closed with a report, as in 
 
 | Stage | Content | Status |
 |---|---|---|
-| 0 | How to reach every boss without playing the whole game | **Done** (2026-10-18), waiting for approval |
-| 1 | Identify the bosses (code, life, death) | Pending |
+| 0 | How to reach every boss without playing the whole game | **Closed** (2026-10-18) |
+| 1 | Identify the bosses (code, life, death) | **Done** (2026-10-18), waiting for approval |
 | 2 | Boss health bar | Pending |
 | 3 | Boss Rush | Pending |
 
@@ -51,7 +51,34 @@ The damage routine `0x4AD18` is Metal Slug 3's `0x1A8B8` with other offsets: **t
 word at `+0x54`, the dead bit is bit 7 of `+0x61`**. The objects' list is headed at `0x100BF4`
 (the stage's object root). Stage 1 identifies the bosses with these.
 
-### Open for stage 1
+## Stage 1: the bosses
 
-- `BOSS A` and `BOSS B` (Mission 5): what they are (the stairs' soldiers may be the fight itself)
-  and a way through for the bot (the stairs, the gap).
+Found with `analysis\boss_rush\stage1\survey.py` (a section started as above, invincible, RAM
+every 120 VBlanks, the objects with a life of 1000 or more) and `death.py` (the same with the "D
+kills every enemy" dip, D pressed every 100 frames: the boss's routine, life and dead bit, the
+mission and section bytes every 30 VBlanks).
+
+| Boss | Life | Object | Code (alive -> defeat) | Section ends |
+|---|---|---|---|---|
+| Mission 1: the red tank | 5000 | top level; a part (`0xD35CE`) copies its life | `0x59ED6`-`0x5A4D6` -> `0x5A880`-`0x5A9AE` | mission 0 -> 1 |
+| Mission 2: the airship | 10000 | top level | `0x5E0C0` -> `0x60982`-`0x60A6E` | mission 1 -> 2 |
+| Mission 3: the cannon machine | 4000 | top level | `0x5327A`-`0x53938`, defeat `0x52F4A` | mission 2 -> 3 |
+| Mission 4: the sand worm / land submarine | 7000 | top level | `0x55D10`-`0x5661E` | mission 3 -> 4 |
+| Mission 5: `BOSS B` (the stone machine) | 2000 x 2 | two parts (`0xEE8EC`) of a controller | - | not seen |
+| Mission 5: the final boss | 5000 | top level | `0x50D3C`-`0x51442` | mission 4 -> 5, then the ending (group 5) |
+
+- **A boss section ends** when the game loads another one: the mission byte changes (Missions 1-4
+  and the final boss), as in Metal Slug 3.
+- **Not identified (time-boxed):** Mission 5's `5_4 ... BOSS` (record 3: a mech in the ruins, no
+  object with 300 or more life in the bot's runs) and `BOSS A` (record 4: the stairs, none either;
+  the bot never gets past the hooded soldiers). `BOSS B`'s parts never took damage: the bot falls
+  into the gap between the pillars (even invincible) before reaching them, also with their life
+  set to 1.
+
+**Against MAME** (`analysis\boss_rush\stage1\boss_m1`-`m5`: the scripted start with the two
+bytes written at frame 5800, invincible with the developer mode, `PD_DIPS=8000 PD_DEVMODE=1`):
+images identical (one frame of Mission 1's run, 8576, drawn while an interrupt residue lasts);
+RAM differs only in the listed VBlanks, checked byte by byte: the stack (`0x10F200`-`0x10F2FF`) and
+single timing-derived words that are equal again one or two VBlanks later (`0x100018`, the line
+measured after the wait loop; bytes the interrupted routine was writing). Tests
+`mslug5_boss_m1_vs_mame` ... `_m5_vs_mame`.
