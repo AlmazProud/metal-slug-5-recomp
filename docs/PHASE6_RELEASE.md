@@ -10,7 +10,7 @@ Metal Slug 3's method (`C:\Projecto Decompile\MS3_Port\repo\docs\PHASE6_RELEASE.
 | 1 | Documentation (`README.md`) and version 1.0.0 | Done |
 | 2 | Audits (`tools/audit.py`): the whole history, the ROM search, personal data | Done |
 | 3 | Packaging (interpreter-only zip), CI and a clean clone | Done |
-| 4 | Publishing `AlmazProud/metal-slug-5-recomp`, each step with the user's OK | Waiting: GitHub CLI is not signed in |
+| 4 | Publishing `AlmazProud/metal-slug-5-recomp`, each step with the user's OK | In progress: repository public; release pending |
 
 Known exception for the audits: `src/games/mslug5/crypt_tables.h`, the decryption's key tables,
 in the repository by the user's decision (Phase 5).
@@ -47,3 +47,14 @@ in the repository by the user's decision (Phase 5).
 - **Clean clone:** without ROMs, analysis or the environment's variables, with only the
   toolchain and Python in the PATH, it configures and builds with no warnings; `--version` says
   1.0.0; the Metal Slug 3 and X targets and the tests are left out.
+
+## Stage 4: publishing (each step with the user's OK)
+
+**Repository:** https://github.com/AlmazProud/metal-slug-5-recomp (public, branch `main`)
+
+1. GitHub CLI signed in to the AlmazProud account by the user (the environment keeps its
+   configuration in `tools\_cache\gh`, `GH_CONFIG_DIR`).
+2. With the user's OK (2026-10-18): `gh repo create AlmazProud/metal-slug-5-recomp --public
+   --source . --remote origin --push`: the whole history (63 commits), `main` the same commit as
+   the local one. The push started the CI build.
+3. The release v1.0.0 with the zip: pending, with its own OK.
