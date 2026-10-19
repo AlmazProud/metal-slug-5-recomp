@@ -12,6 +12,12 @@ ADPCM-A (PCM2, bytes, input = 268-v1c.v1 + 268-v2c.v2, 16 MB):
   with PCM2_XOR[i & 7].
 Sprites and fix (CMC50): Metal Slug 3's CMC42 form (tools/learn_cmc.py), other tables; the fix
   layer is 128 KB of the decrypted sprites.
+M1 (CMC50, bytes, input = 268-m1.m1, 512 KB): a byte permutation, no XOR, keyed by the 16-bit sum
+  of the file's first 64 KB; learned for the real set's key (M1_KEY) only. Each 64 KB bank stays in
+  place. Within bank k, the file address's bits A = {1,3,5,7,9,10,13,14} and B = {0,2,4,6,8,11,12,15}
+  (gathered low bit first) give X = M1_PA[k][A] ^ M1_T1[k][B] and Y = M1_PB[k][B] ^ M1_T2[k][X];
+  the region address has X's bits at M1_XPOS[k] and Y's at M1_YPOS[k]. The region's first 64 KB
+  repeat its 0x10000-0x1FFFF; the runtime only needs the decrypted 512 KB.
 
 Usage:
   python tools/learn_crypt5.py --maps analysis/phase0/probe --set roms/mslug5.zip
@@ -110,6 +116,62 @@ def pcm2_decrypt(t: dict, data: np.ndarray) -> np.ndarray:
     return (data[src % n] ^ np.array(t["XOR"], np.uint8)[i & 7]).astype(np.uint8)
 
 
+M1_A = [1, 3, 5, 7, 9, 10, 13, 14]
+M1_B = [0, 2, 4, 6, 8, 11, 12, 15]
+
+
+def gather(v, bits):
+    return sum(((v >> b) & 1) << k for k, b in enumerate(bits))
+
+
+def learn_m1(maps: Path) -> dict:
+    m = np.load(maps / "audiocpu_map.npz")
+    check("m1: a byte permutation (no XOR, no bit permutation)",
+          bool((m["xor"] == 0).all() and (m["pi"] == np.arange(8)).all() and not m["const"].any()))
+    sigma = m["sigma"].astype(np.int64)
+    check("m1: the region's first 64 KB repeat 0x10000-0x1FFFF", bool((sigma[:0x10000] == sigma[0x10000:0x20000]).all()))
+    s = sigma[0x10000:]
+    x = np.arange(0x10000)
+    t = {"KEY": int(m["key"]), "XPOS": [], "YPOS": [], "PA": [], "T1": [], "PB": [], "T2": []}
+    for k in range(8):
+        L = s[k << 16:(k + 1) << 16]
+        check(f"m1: bank {k} stays in place", bool(((L >> 16) == k).all()))
+        L = L & 0xFFFF
+        g = np.empty(0x10000, np.int64); g[L] = x            # file address -> region address
+        xpos, ypos = [], []
+        for b in M1_A:                                         # A's bit -> one region bit, always
+            d = g ^ g[x ^ (1 << b)]
+            xpos.append([o for o in range(16) if ((d >> o) & 1).all()][0])
+        ypos = [o for o in range(16) if o not in xpos]
+        a, bb = gather(x, M1_A), gather(x, M1_B)
+        xx, yy = gather(g, xpos), gather(g, ypos)
+        T1 = np.zeros(256, np.int64); sel = a == 0; T1[bb[sel]] = xx[sel]
+        PA = np.zeros(256, np.int64); PA[a] = xx ^ T1[bb]
+        T2 = np.zeros(256, np.int64); sel = bb == 0; T2[xx[sel]] = yy[sel]
+        PB = np.zeros(256, np.int64); PB[bb] = yy ^ T2[xx]
+        ok = bool((PA[a] ^ T1[bb] == xx).all() and (PB[bb] ^ T2[xx] == yy).all())
+        check(f"m1: bank {k}: X = PA[A] ^ T1[B], Y = PB[B] ^ T2[X]", ok)
+        for nm, v in (("XPOS", xpos), ("YPOS", ypos), ("PA", PA), ("T1", T1), ("PB", PB), ("T2", T2)):
+            t[nm].append([int(q) for q in v])
+    return t
+
+
+def m1_decrypt(t: dict, data: np.ndarray) -> np.ndarray:
+    out = np.empty_like(data)
+    x = np.arange(0x10000)
+    a, bb = gather(x, M1_A), gather(x, M1_B)
+    for k in range(8):
+        X = np.array(t["PA"][k])[a] ^ np.array(t["T1"][k])[bb]
+        Y = np.array(t["PB"][k])[bb] ^ np.array(t["T2"][k])[X]
+        r = np.zeros(0x10000, np.int64)
+        for i, p in enumerate(t["XPOS"][k]):
+            r |= ((X >> i) & 1) << p
+        for i, p in enumerate(t["YPOS"][k]):
+            r |= ((Y >> i) & 1) << p
+        out[(k << 16) + r] = data[(k << 16) + x]
+    return out
+
+
 def learn_fix(maps: Path, t: dict) -> dict:
     """The fix layer: fix byte k = decrypted sprite byte FIX_BASE ^ (linear map of k's bits)."""
     f = np.load(maps / "fixed_map.npz")
@@ -176,12 +238,19 @@ def main() -> int:
         idx ^= np.where((k >> b) & 1, c, 0)
     check("fix: all 128 KB identical to MAME's region",
           bool((spr[idx] == np.frombuffer((a.dumps / "fixed.bin").read_bytes(), np.uint8)).all()))
+    print("m1 (CMC50, keyed)")
+    mt = learn_m1(a.maps)
+    m1 = np.frombuffer(read_set(a.set, "268-m1.m1"), np.uint8)
+    key = int(m1[:0x10000].astype(np.int64).sum() & 0xFFFF)
+    check(f"m1: the set's key {key:04X} is the learned one", key == mt["KEY"])
+    ac = np.frombuffer((a.dumps / "audiocpu.bin").read_bytes(), np.uint8)
+    check("m1: all 512 KB identical to MAME's region (0x10000-0x8FFFF)", bool((m1_decrypt(mt, m1) == ac[0x10000:]).all()))
     if a.header:
-        write_header(a.header, pt, at, st, fx)
+        write_header(a.header, pt, at, st, fx, mt)
     return 0
 
 
-def write_header(path: Path, pt: dict, at: dict, st: dict, fx: dict) -> None:
+def write_header(path: Path, pt: dict, at: dict, st: dict, fx: dict, mt: dict) -> None:
     def arr(ctype, name, v, fmt="0x{:02X}", per=16):
         v = [int(x) for x in v]
         rows = [", ".join(fmt.format(x) for x in v[i:i + per]) for i in range(0, len(v), per)]
@@ -209,6 +278,20 @@ def write_header(path: Path, pt: dict, at: dict, st: dict, fx: dict) -> None:
     out.append(arr("uint8_t", "CMC_BASE_ORDER", st["BASE"]))
     out.append(f"static const uint32_t CMC_FIX_BASE = 0x{fx['FIX_BASE']:X};")
     out.append(f"static const uint32_t CMC_FIX_COLS[{len(fx['FIX_COLS'])}] = {{" + ", ".join(f"0x{c:X}" for c in fx["FIX_COLS"]) + "};")
+    out.append(f"\n/* M1: learned for the key 0x{mt['KEY']:04X} (the 16-bit sum of the file's first 64 KB). */")
+    out.append(f"static const uint16_t M1_KEY = 0x{mt['KEY']:04X};")
+    out.append("static const uint8_t M1_A_BITS[8] = {" + ", ".join(map(str, M1_A)) + "};")
+    out.append("static const uint8_t M1_B_BITS[8] = {" + ", ".join(map(str, M1_B)) + "};")
+    for nm in ("XPOS", "YPOS"):
+        out.append(f"static const uint8_t M1_{nm}[8][8] = {{\n" + "".join(
+            "    {" + ", ".join(str(v) for v in row) + "},\n" for row in mt[nm]) + "};")
+    for nm in ("PA", "T1", "PB", "T2"):
+        rows = []
+        for k in range(8):
+            v = mt[nm][k]
+            rows.append("    {\n" + "".join("        " + ", ".join(f"0x{q:02X}" for q in v[i:i + 16]) + ",\n"
+                                            for i in range(0, 256, 16)) + "    },\n")
+        out.append(f"static const uint8_t M1_{nm}[8][256] = {{\n" + "".join(rows) + "};")
     out += ["", "#endif", ""]
     path.write_text("\n".join(out), encoding="utf-8")
     print(f"header -> {path}")
