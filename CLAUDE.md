@@ -111,7 +111,7 @@ Oracle: `mame mslug5 -bios us -rompath "<workspace>\roms"`.
 | 3. Analysis and recompilation | **Closed** (2026-10-18). See `docs/PHASE3_RECOMP.md`. P1 and BIOS recompiled (no code runs from the NEO-PVC window); lockstep, scripted runs and the user's game `partida1` (13.4 min) pass against MAME (images identical; 48 known stack-only VBlanks). `ctest`: 92/92. |
 | 4. Profile and frontend | **Closed** (2026-10-18). See `docs/PHASE4_PROFILE.md` and `docs/BOSS_RUSH.md`. Every Metal Slug 3 option for Metal Slug 5, checked against MAME. `ctest`: 114/114. |
 | 5. Loader (MAME set decrypted at load) | **Closed** (2026-10-18). See `docs/PHASE5_LOADER.md`. The MAME set decrypted at load, every region identical to the reference files. `ctest`: 117/117. |
-| 6. Publishing (`AlmazProud/metal-slug-5-recomp`) | **In progress.** See `docs/PHASE6_RELEASE.md`. Nothing public without the user's OK at each step. |
+| 6. Publishing (`AlmazProud/metal-slug-5-recomp`) | **Done** (waiting for approval to close). See `docs/PHASE6_RELEASE.md`. Public repository and release v1.0.0 (interpreter-only zip), each step with the user's OK. |
 
 ### Phase 5: result
 
