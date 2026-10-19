@@ -64,3 +64,11 @@ in the repository by the user's decision (Phase 5).
 4. CI: the first push's build (GitHub Actions, the pinned toolchain) passed in 46 s.
 
 **Release:** https://github.com/AlmazProud/metal-slug-5-recomp/releases/tag/v1.0.0
+
+## v1.0.1 (2026-10-19)
+
+A fix after the first release: a mission that ends without being recorded now says why. With
+the slowdown off (Settings > Game) the notice says so; with cheats, debug options or a loaded
+game it says that instead (Boss Rush shows no notice, its missions never count). The Records
+page notes it while the slowdown is off. The rule is the same as 1.0.0: only clean runs are
+saved. New test `mslug5_records_slowdown_off`; `ctest` 118/118.
