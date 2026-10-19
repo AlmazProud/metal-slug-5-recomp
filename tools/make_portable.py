@@ -26,6 +26,9 @@ REPO = Path(__file__).resolve().parents[1]
 ROOT = REPO.parent
 
 GAMES = {"mslug5": "Metal Slug 5", "mslug3": "Metal Slug 3", "mslugx": "Metal Slug X"}
+# Games whose runtime decrypts the MAME set at load: their copy takes the set itself (relative to
+# the given folder) when it is there, instead of the decrypted files.
+MAME_SETS = {"mslug5": ["mslug5.zip", "neogeo/sp-u2.sp1", "neogeo/000-lo.lo", "neogeo/sfix.sfix"]}
 
 README = """{title} - portable native port
 
@@ -58,7 +61,12 @@ def copy_game(game: str, files: Path, build: Path, out: Path) -> int:
     if not dll.is_file():
         print(f"missing {dll}: build first", file=sys.stderr)
         return 1
-    data = sorted(p for p in files.iterdir() if p.is_file() and p.name.startswith(f"{game}_")) if files.is_dir() else []
+    mame = [files / f for f in MAME_SETS.get(game, [])]
+    use_mame = bool(mame) and all(p.is_file() for p in mame)
+    if use_mame:
+        data = mame
+    else:
+        data = sorted(p for p in files.iterdir() if p.is_file() and p.name.startswith(f"{game}_")) if files.is_dir() else []
     if not exe.is_file() or not data:
         print(f"{GAMES[game]}: skipped ({'no ' + exe.name if not exe.is_file() else f'no {game}_* files in {files}'})")
         return 0
@@ -72,13 +80,17 @@ def copy_game(game: str, files: Path, build: Path, out: Path) -> int:
             shutil.copy2(REPO / name, dest / (name + ".txt" if "." not in name else name))
     if (REPO / "licenses").is_dir():
         shutil.copytree(REPO / "licenses", dest / "licenses", dirs_exist_ok=True)
+    if use_mame:                      # an earlier copy's decrypted files would load first
+        for old in (dest / "game").glob(f"{game}_*"):
+            old.unlink()
     for f in data:
-        target = dest / "game" / f.name
+        target = dest / "game" / f.relative_to(files)
+        target.parent.mkdir(parents=True, exist_ok=True)
         if not target.exists() or target.stat().st_size != f.stat().st_size:
             shutil.copy2(f, target)
     (dest / "README.txt").write_text(README.format(title=GAMES[game], exe=exe.name), encoding="utf-8")
     size = sum(p.stat().st_size for p in dest.rglob("*") if p.is_file())
-    print(f"{GAMES[game]}: {dest} ({size / 2**20:.0f} MB, {len(data)} game files)")
+    print(f"{GAMES[game]}: {dest} ({size / 2**20:.0f} MB, {len(data)} game files{', the MAME set' if use_mame else ''})")
     return 0
 
 
