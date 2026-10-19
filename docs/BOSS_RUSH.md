@@ -8,7 +8,7 @@ its own within Phase 4). Worked in stages, each one closed with a report, as in 
 | 0 | How to reach every boss without playing the whole game | **Closed** (2026-10-18) |
 | 1 | Identify the bosses (code, life, death) | **Closed** (2026-10-18) |
 | 2 | Boss health bar | **Closed** (2026-10-18) |
-| 3 | Boss Rush | **Done** (2026-10-18), waiting for approval |
+| 3 | Boss Rush | **Closed** (2026-10-18) |
 
 ## Stage 0: the developer stage table
 

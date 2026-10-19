@@ -109,9 +109,30 @@ Oracle: `mame mslug5 -bios us -rompath "<workspace>\roms"`.
 | 1. Import Metal Slug 3's runtime and frontend with an empty `mslug5` descriptor and profile | **Closed** (2026-10-18). See `docs/PHASE1_IMPORT.md`. `ctest`: 85/85 (interpreter-only 81/81). |
 | 2. Metal Slug 5 hardware in the interpreter (NEO-PVC, encrypted M1, PCM2, banking) | **Closed** (2026-10-18). See `docs/PHASE2_HARDWARE.md`. Image and RAM identical to MAME (known stack-only VBlanks); audio not exact: the power-on alignment of 68000, Z80 and YM2610, deferred by the user to a later stage (with two Metal Slug 5-only corrections it is exact, but they break Metal Slug 3). `ctest`: 89/89. |
 | 3. Analysis and recompilation | **Closed** (2026-10-18). See `docs/PHASE3_RECOMP.md`. P1 and BIOS recompiled (no code runs from the NEO-PVC window); lockstep, scripted runs and the user's game `partida1` (13.4 min) pass against MAME (images identical; 48 known stack-only VBlanks). `ctest`: 92/92. |
-| 4. Profile and frontend | **In progress.** See `docs/PHASE4_PROFILE.md`. |
+| 4. Profile and frontend | **Ready to close** (waiting for approval). See `docs/PHASE4_PROFILE.md` and `docs/BOSS_RUSH.md`. Every Metal Slug 3 option for Metal Slug 5, checked against MAME. `ctest`: 114/114. |
 | 5. Loader (MAME set decrypted at load) | Pending. |
 | 6. Publishing (`AlmazProud/metal-slug-5-recomp`) | Pending. |
+
+### Phase 4: result
+
+Details in `docs/PHASE4_PROFILE.md` and `docs/BOSS_RUSH.md`.
+
+- **The engine is Metal Slug 3's:** its routines are in Metal Slug 5 at other addresses (found by
+  matching Metal Slug 3's profile windows, checked one by one); the player tables, objects and
+  forms moved fields.
+- **Profile** (`src/games/mslug5/profile.c`): developer mode, debug dips and the developers' menu,
+  load meter, red blood, start mission, missions and score, cheats (weapons through the game's
+  own routine `0x1C356`, bombs, lives, soldier, fat, 11 vehicles), title logo, fast boot, the
+  sound driver (four modes, 440 sounds), boss bar and Boss Rush (five bosses).
+- **Against MAME** (`analysis\phase4`, `analysis\boss_rush`): every option's run identical in
+  image; RAM but listed interrupt residue and timing-derived words, checked byte by byte. MAME's
+  boot is not deterministic in some runs (RAM only, VBlanks 69-94).
+- **Shared code** (Metal Slug 3 and X unchanged): weapon give routine, cheats' RAM writes logged for
+  MAME, forms from the game's form table, spawn position offset, the sound menu's driver modes and
+  silence commands, the title logo capture, the sound test's energy without the constant level.
+- **Portable copy** (`tools/make_portable.py`): Metal Slug 5 with its decrypted reference files.
+- **Open:** Mission 5's middle bosses (not identified), the bosses' and weapons 16-18's names, the
+  rest of the sound names; the audio (deferred since Phase 2).
 
 ### Phase 3: result
 

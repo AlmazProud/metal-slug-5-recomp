@@ -1,6 +1,6 @@
 # Phase 4: Metal Slug 5's profile and frontend
 
-**State:** in progress (started 2026-10-18).
+**State:** ready to close (waiting for the user's approval). `ctest`: 114/114.
 
 Goal: the Metal Slug 3 port's frontend options working with Metal Slug 5 and verified against
 MAME (the game profile `src/games/mslug5/profile.c`; the frontend only offers what the profile
