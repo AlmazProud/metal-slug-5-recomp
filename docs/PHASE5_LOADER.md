@@ -1,6 +1,6 @@
 # Phase 5: Metal Slug 5's MAME set decrypted at load
 
-**State:** ready to close (waiting for the user's approval). `ctest`: 117/117 (interpreter-only: Metal Slug 5's 31/31).
+**State:** closed (2026-10-18). `ctest`: 117/117 (interpreter-only: Metal Slug 5's 31/31).
 
 Goal: `mslug5.exe` runs from the user's MAME set (`mslug5.zip` or loose files, recognized by
 CRC-32 and SHA-1) decrypted at load, with the same bytes as the decrypted reference files of

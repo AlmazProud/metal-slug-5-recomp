@@ -110,8 +110,8 @@ Oracle: `mame mslug5 -bios us -rompath "<workspace>\roms"`.
 | 2. Metal Slug 5 hardware in the interpreter (NEO-PVC, encrypted M1, PCM2, banking) | **Closed** (2026-10-18). See `docs/PHASE2_HARDWARE.md`. Image and RAM identical to MAME (known stack-only VBlanks); audio not exact: the power-on alignment of 68000, Z80 and YM2610, deferred by the user to a later stage (with two Metal Slug 5-only corrections it is exact, but they break Metal Slug 3). `ctest`: 89/89. |
 | 3. Analysis and recompilation | **Closed** (2026-10-18). See `docs/PHASE3_RECOMP.md`. P1 and BIOS recompiled (no code runs from the NEO-PVC window); lockstep, scripted runs and the user's game `partida1` (13.4 min) pass against MAME (images identical; 48 known stack-only VBlanks). `ctest`: 92/92. |
 | 4. Profile and frontend | **Closed** (2026-10-18). See `docs/PHASE4_PROFILE.md` and `docs/BOSS_RUSH.md`. Every Metal Slug 3 option for Metal Slug 5, checked against MAME. `ctest`: 114/114. |
-| 5. Loader (MAME set decrypted at load) | **Ready to close** (waiting for approval). See `docs/PHASE5_LOADER.md`. The MAME set decrypted at load, every region identical to the reference files. `ctest`: 117/117. |
-| 6. Publishing (`AlmazProud/metal-slug-5-recomp`) | Pending. |
+| 5. Loader (MAME set decrypted at load) | **Closed** (2026-10-18). See `docs/PHASE5_LOADER.md`. The MAME set decrypted at load, every region identical to the reference files. `ctest`: 117/117. |
+| 6. Publishing (`AlmazProud/metal-slug-5-recomp`) | **In progress.** See `docs/PHASE6_RELEASE.md`. Nothing public without the user's OK at each step. |
 
 ### Phase 5: result
 
