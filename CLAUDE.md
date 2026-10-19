@@ -110,8 +110,22 @@ Oracle: `mame mslug5 -bios us -rompath "<workspace>\roms"`.
 | 2. Metal Slug 5 hardware in the interpreter (NEO-PVC, encrypted M1, PCM2, banking) | **Closed** (2026-10-18). See `docs/PHASE2_HARDWARE.md`. Image and RAM identical to MAME (known stack-only VBlanks); audio not exact: the power-on alignment of 68000, Z80 and YM2610, deferred by the user to a later stage (with two Metal Slug 5-only corrections it is exact, but they break Metal Slug 3). `ctest`: 89/89. |
 | 3. Analysis and recompilation | **Closed** (2026-10-18). See `docs/PHASE3_RECOMP.md`. P1 and BIOS recompiled (no code runs from the NEO-PVC window); lockstep, scripted runs and the user's game `partida1` (13.4 min) pass against MAME (images identical; 48 known stack-only VBlanks). `ctest`: 92/92. |
 | 4. Profile and frontend | **Closed** (2026-10-18). See `docs/PHASE4_PROFILE.md` and `docs/BOSS_RUSH.md`. Every Metal Slug 3 option for Metal Slug 5, checked against MAME. `ctest`: 114/114. |
-| 5. Loader (MAME set decrypted at load) | **In progress.** See `docs/PHASE5_LOADER.md`. |
+| 5. Loader (MAME set decrypted at load) | **Ready to close** (waiting for approval). See `docs/PHASE5_LOADER.md`. The MAME set decrypted at load, every region identical to the reference files. `ctest`: 117/117. |
 | 6. Publishing (`AlmazProud/metal-slug-5-recomp`) | Pending. |
+
+### Phase 5: result
+
+Details in `docs/PHASE5_LOADER.md`.
+
+- **The MAME set loads** (zip or loose, with the BIOS), decrypted at load in about a second:
+  program, sprites, fix, M1 and samples identical to the decrypted reference files.
+- **Compact descriptions** of Phase 0's black-box maps (`tools/learn_crypt5.py`): NEO-PVC (block
+  bases, a linear map, 3 bit permutations, a 128-word XOR), PCM2 (an addition by bit weights and
+  an 8-byte XOR), CMC50 (Metal Slug 3's CMC42 form) and the M1 (two Feistel steps per bank for the
+  real key). The key tables (`src/games/mslug5/crypt_tables.h`, 87 KB) are in the repository by
+  the user's decision.
+- **Shared code:** optional M1 and ADPCM hooks in the loader (Metal Slug 3 and X unchanged).
+- **Portable copy** with the MAME set itself.
 
 ### Phase 4: result
 
