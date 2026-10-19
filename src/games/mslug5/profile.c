@@ -130,6 +130,19 @@ const GameProfile game_profile = {
     .object_pickup_flag = 0xA1,
     .table_previous_weapon = 5,
 
+    /* Title screen logo (attract, from frame ~911 after power-on with empty SRAM): sprites 344-376
+     * ("METAL SLUG" and the 5) and 380 ("TM", first tile 0x44855, used to recognize the moment);
+     * the background is sprites 324-343, the SNK PLAYMORE logo 377-379. The title draws its
+     * sprites every other frame. */
+    .logo_first = 344,
+    .logo_last = 376,
+    .logo_tm = 380,
+    .logo_tm_tile = 0x44855u,
+    .logo_max_frames = 2000,
+    /* Fast boot: the BIOS boot screen (no watchdog reset), black, and the game's first image (the
+       parental advisory warning) at frame 301. */
+    .boot_frames = 301,
+
     /* Main loop: waits at 0xEF2-0xEFA (cmp.b -$7FE9(a5),-$7FEA(a5): VBlanks since the last logic
      * cycle against the game's own threshold) and exits at 0xEFC, storing the count at
      * -$7FE6(a5) = 0x10001A. */
