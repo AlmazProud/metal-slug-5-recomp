@@ -147,6 +147,9 @@ typedef struct {
        appears at spawn_x / spawn_y from player 1 (its object's screen position, longs at +0x3C
        and +0x40). */
     uint32_t spawn_layer;
+    /* The object's screen position for spawn_layer: x long at this offset, y long after it (0: 0x3C,
+       Metal Slug 3; Metal Slug 5: 0x42). */
+    uint32_t object_position;
     /* Weapon items: the stage object type of the items (0: the weapon cheat gives the weapon
        directly), its x offset from player 1 and the item kind of each weapon (0: none, the weapon
        is given directly). */

@@ -232,9 +232,9 @@ static void spawn_now(int type, int param)
     if (param >= 0) { r[10] = (uint8_t)(param >> 8); r[11] = (uint8_t)param; r[12] = r[13] = 0xFF; }
     uint32_t x = param >= 0 ? game_profile.item_x : game_profile.spawn_x, y = game_profile.spawn_y;
     if (game_profile.spawn_layer) {
-        uint32_t obj = object_of(0);
-        x += (ram32(obj + 0x3C) >> 16) - (ram32(game_profile.spawn_layer) >> 16);
-        y += (ram32(obj + 0x40) >> 16) - (ram32(game_profile.spawn_layer + 4) >> 16);
+        uint32_t obj = object_of(0), pos = game_profile.object_position ? game_profile.object_position : 0x3C;
+        x += (ram32(obj + pos) >> 16) - (ram32(game_profile.spawn_layer) >> 16);
+        y += (ram32(obj + pos + 4) >> 16) - (ram32(game_profile.spawn_layer + 4) >> 16);
     }
     const struct { uint8_t at; uint32_t v; } w[3] = {
         {game_profile.spawn_type_at, (uint32_t)type}, {game_profile.spawn_x_at, x & 0xFFFF}, {game_profile.spawn_y_at, y & 0xFFFF}};
