@@ -34,16 +34,22 @@ static uint32_t sprite_tile(int s)
 static SDL_Surface *generate(void)
 {
     static uint32_t a[NG_HEIGHT][NG_WIDTH], b[NG_HEIGHT][NG_WIDTH];
-    int wait = -1;
+    int wait = -1, found = 0;
     ng_power_on();
-    for (int f = 0; f < (int)game_profile.logo_max_frames; f++) {
+    for (int f = 0; f < (int)game_profile.logo_max_frames && !found; f++) {
         ng_run_frame();
         if (wait < 0 && sprite_tile(game_profile.logo_tm) == game_profile.logo_tm_tile) wait = 30;   /* let it finish sliding in */
-        if (wait >= 0 && wait-- == 0) break;
+        if (wait < 0 || wait-- > 0) continue;
+        /* Then the first frame that draws both the logo and the TM (Metal Slug 5's title draws
+           its sprites every other frame). */
+        ng_video_capture_sprites(&a[0][0], game_profile.logo_first, game_profile.logo_last);
+        ng_video_capture_sprites(&b[0][0], game_profile.logo_tm, game_profile.logo_tm);
+        int has_a = 0, has_b = 0;
+        for (int y = 0; y < NG_HEIGHT; y++)
+            for (int x = 0; x < NG_WIDTH; x++) { has_a |= a[y][x] != 0; has_b |= b[y][x] != 0; }
+        found = has_a && has_b;
     }
-    if (wait != -1) return NULL;
-    ng_video_capture_sprites(&a[0][0], game_profile.logo_first, game_profile.logo_last);
-    ng_video_capture_sprites(&b[0][0], game_profile.logo_tm, game_profile.logo_tm);
+    if (!found) return NULL;
     int x0 = NG_WIDTH, y0 = NG_HEIGHT, x1 = -1, y1 = -1;
     for (int y = 0; y < NG_HEIGHT; y++)
         for (int x = 0; x < NG_WIDTH; x++) {
