@@ -508,6 +508,12 @@ static int load_mame(NgRoms *r, Candidates *cs, char *error, int size)
         memcpy(r->z80 + at, part[NG_MAME_M][i], chosen[NG_MAME_M][i]->size);
         at += chosen[NG_MAME_M][i]->size;
     }
+    if (crypt && crypt->adpcm) crypt->adpcm(r->adpcm, r->adpcm_size);
+    if (crypt && crypt->z80 && crypt->z80(r->z80, r->z80_size) != 0) {
+        set_error(error, size, "The MAME set's M1 does not have the expected key");
+        ng_roms_free(r);
+        goto done;
+    }
     if (chosen[NG_MAME_P][0] && chosen[NG_MAME_P][0]->label && !strcmp(chosen[NG_MAME_P][0]->label, "arcade"))
         r->info.version = NG_VERSION_ARCADE;
     snprintf(r->info.bios, sizeof r->info.bios, "%s", sys_chosen[S_BIOS]->label);

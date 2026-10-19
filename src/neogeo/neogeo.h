@@ -68,6 +68,10 @@ typedef struct {
     void (*sprites)(const uint8_t *image, uint32_t size, uint8_t *region);
     uint32_t fix_size;
     void (*fix)(const uint8_t *region, uint8_t *s);    /* the fix layer, Neo Geo S format */
+    /* Optional (Metal Slug 5: CMC50 M1, PCM2 samples), in place: the M files joined (the Z80
+       program; 0 = decrypted, -1 = not this game's key) and the V files joined. NULL: plain. */
+    int (*z80)(uint8_t *m, uint32_t size);
+    void (*adpcm)(uint8_t *v, uint32_t size);
 } NgMameCrypt;
 typedef struct {
     int kind, index;
