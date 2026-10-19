@@ -46,6 +46,18 @@ static const CheatVehicle VEHICLES[] = {
     {0x24, "Cannon tank (variant)"}, {0x28, "Walker (unknown)"},
 };
 
+/* The bosses' code (docs/BOSS_RUSH.md, stage 1): the routines seen in their objects, alive and
+   defeated, with room. No names yet: the bar shows "BOSS". */
+static const ProfileBoss BOSSES[] = {
+    {0x059E00u, 0x05AA00u, 5000, NULL},     /* Mission 1: the red tank (alive 0x59ED6-, defeat 0x5A880-) */
+    {0x05E000u, 0x05E200u, 10000, NULL},    /* Mission 2: the airship (alive 0x5E0C0) */
+    {0x060900u, 0x060B00u, 10000, NULL},    /* Mission 2: the airship, defeated (0x60982-0x60A6E) */
+    {0x052F00u, 0x053A00u, 4000, NULL},     /* Mission 3: the cannon machine */
+    {0x055C00u, 0x056700u, 7000, NULL},     /* Mission 4: the sand worm / land submarine */
+    {0x0EE8E0u, 0x0EE900u, 2000, NULL},     /* Mission 5: BOSS B, the stone machine's two parts */
+    {0x050D00u, 0x051500u, 5000, NULL},     /* Mission 5: the final boss */
+};
+
 /* Code that must be identical to the reference copy's for this profile to be used (profile.c). */
 static const ProfileWindow WINDOWS[] = {
     {0x0008D0, 0x0008EA},     /* debug dips cleared on boot (0x8DE) */
@@ -69,6 +81,7 @@ static const ProfileWindow WINDOWS[] = {
     {0x01C1C0, 0x01C298},     /* form tables (0x1C1C4, 0x1C1D8, 0x1C238) and the form request (0x1C1F4) */
     {0x01C8A4, 0x01C8EE},     /* food: table +8 += 0x1F0, fat at 0x780 */
     {0x0202A0, 0x0202E6},     /* fat: the food counter runs down */
+    {0x04AD18, 0x04AD3C},     /* the damage routine: life at +0x54, dead bit +0x61 (boss bar) */
     {0x0E951C, 0x0E962A},     /* stage object records: command 8 (spawn_routine) */
 };
 
@@ -77,7 +90,7 @@ const GameProfile game_profile = {
     .subtitle = "",
     .windows = WINDOWS,
     .n_windows = (int)(sizeof WINDOWS / sizeof WINDOWS[0]),
-    .windows_sha256 = "d0642fa0640ce051f1770d769d95a79deb212432c2f4d4a090b8c48b67e5e8f3",
+    .windows_sha256 = "5722b2d560c41e91f8af9e4188059fac3ba7e06bf62fe2da0bb76bae329b63da",
     .vehicles = VEHICLES,
     .n_vehicles = (int)(sizeof VEHICLES / sizeof VEHICLES[0]),
     .sounds = MSLUG5_SOUNDS,
@@ -193,6 +206,15 @@ const GameProfile game_profile = {
     .object_position = 0x42,
     .spawn_x = 0x70,
     .spawn_y = 0,
+
+    /* Boss health bar (docs/BOSS_RUSH.md, stage 1): the objects' list at 0x100BF4 (links at +4,
+       parent at +0xC, as in Metal Slug 3), every object's life at +0x54, dead bit at +0x61 (the
+       damage routine 0x4AD18); the bosses' code. */
+    .object_list = 0x100BF4u,
+    .object_life = 0x54,
+    .object_dead = 0x61,
+    .bosses = BOSSES,
+    .n_bosses = (int)(sizeof BOSSES / sizeof BOSSES[0]),
 
     /* Title screen logo (attract, from frame ~911 after power-on with empty SRAM): sprites 344-376
      * ("METAL SLUG" and the 5) and 380 ("TM", first tile 0x44855, used to recognize the moment);

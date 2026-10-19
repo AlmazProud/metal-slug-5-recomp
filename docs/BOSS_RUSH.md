@@ -6,8 +6,8 @@ its own within Phase 4). Worked in stages, each one closed with a report, as in 
 | Stage | Content | Status |
 |---|---|---|
 | 0 | How to reach every boss without playing the whole game | **Closed** (2026-10-18) |
-| 1 | Identify the bosses (code, life, death) | **Done** (2026-10-18), waiting for approval |
-| 2 | Boss health bar | Pending |
+| 1 | Identify the bosses (code, life, death) | **Closed** (2026-10-18) |
+| 2 | Boss health bar | **Done** (2026-10-18), waiting for approval |
 | 3 | Boss Rush | Pending |
 
 ## Stage 0: the developer stage table
@@ -82,3 +82,19 @@ RAM differs only in the listed VBlanks, checked byte by byte: the stack (`0x10F2
 single timing-derived words that are equal again one or two VBlanks later (`0x100018`, the line
 measured after the wait loop; bytes the interrupted routine was writing). Tests
 `mslug5_boss_m1_vs_mame` ... `_m5_vs_mame`.
+
+## Stage 2: the health bar
+
+Metal Slug 3's bar (`src/port/bossbar.c`, Settings > Game > "Boss health bar") with Metal Slug 5's
+profile: the objects' list `0x100BF4` (the same links as Metal Slug 3: next at `+4`, parent at
+`+0xC`), the life at `+0x54`, the dead bit at `+0x61`, and the bosses of stage 1 by their code
+(the airship with two ranges: alive and defeated). A part with its parent's life (the tank's
+`0xD35CE`) is skipped, as in Metal Slug 3. No code changed.
+
+- **Names:** none yet (the bar shows "BOSS"): the series' names are not confirmed here; the
+  profile takes them when given.
+- **Checked:** the bar follows Missions 1-4's bosses from the bot's first hits with their full life
+  (10000, 4000, 7000) and the tank to its death (test `mslug5_bossbar_m1`: its life set to 10 at
+  frame 7000, `10/5000` then `0/5000 dead` at 7020). In the window, a state saved in the airship
+  fight shows the bar at the right edge with "BOSS". The final boss took no damage from the bot
+  and `BOSS B` was not reached, so their bars were not seen.

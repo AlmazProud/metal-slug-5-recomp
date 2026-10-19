@@ -292,6 +292,15 @@ if(EXISTS "${PD_ROMS}/mslug5_game_m68k")
                          --output ${CMAKE_CURRENT_BINARY_DIR}/mslug5_forms_fingerprints_port.txt)
         set_tests_properties(mslug5_forms_vs_mame PROPERTIES LABELS mslug5 ENVIRONMENT "PD_CHEAT=6700,form,0,2\;6900,form,0,0")
     endif()
+    # Boss health bar (docs/BOSS_RUSH.md, stage 2): the Mission 1 boss section, the tank's life set
+    # to 10 at frame 7000; the bar follows it to its death (PD_BOSSBAR prints the bar's changes).
+    add_test(NAME mslug5_bossbar_m1
+             COMMAND mslug5 --roms ${PD_ROMS} --headless --frames 7200 --no-audio
+                     --script ${PD_ANALYSIS}/phase2/start/start_script.txt --date 2026-10-18-00-59-09-0)
+    set_tests_properties(mslug5_bossbar_m1 PROPERTIES LABELS mslug5
+        ENVIRONMENT "PD_BOSSBAR=1;PD_DEVMODE=1;PD_DIPS=8000;PD_POKE=5800,10D680,0\;5800,10D681,8\;7000,101F00,0\;7000,101F01,A"
+        PASS_REGULAR_EXPRESSION "bossbar 7000: boss 101EAC 10/5000
+bossbar 7020: boss 101EAC 0/5000 dead")
     # Phase 4: the sound menu (src/games/mslug5/sounds.c, the profile's driver modes) is audible in
     # the middle of the user's game and, after closing it, the game stays identical.
     set(play1 ${PD_ANALYSIS}/phase3/play/partida1)
