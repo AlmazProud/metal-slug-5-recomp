@@ -30,11 +30,11 @@ jobs:
                 -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ `
                 "-DCMAKE_PREFIX_PATH=$t/sdl3/x86_64-w64-mingw32"
           cmake --build build-dist
-          ./build-dist/src/mslug3.exe --version
+          ./build-dist/src/mslug5.exe --version
 
       - uses: actions/upload-artifact@v7
         with:
-          name: mslug3-win64
+          name: mslug5-win64
           path: |
-            build-dist/src/mslug3.exe
+            build-dist/src/mslug5.exe
             build-dist/src/SDL3.dll
