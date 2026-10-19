@@ -109,6 +109,10 @@ typedef struct {
     uint32_t weapons;
     const char *const *weapon_names;
     uint32_t rom_weapon_subtype_stride, rom_weapon_ammo_stride;
+    /* The player object's byte the pickup clears (0: 0x94, Metal Slug X and 3) and the player
+       table's previous weapon, which the pickup sets to the weapon it replaces (0: none). */
+    uint32_t object_pickup_flag;
+    uint32_t table_previous_weapon;
     /* Soldier: 1 if player*_soldier holds only the internal character (Marco 0, Tarma 1, Eri 2,
        Fio 3), used from the next life; 0 (Metal Slug X): the soldier select index, with the
        internal character in the byte before it and in the player object. */

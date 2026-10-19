@@ -66,12 +66,16 @@ int cheats_give_weapon(int player, int weapon)
     if (game_profile.item_type && game_profile.weapon_items[weapon]) return spawn_item(game_profile.weapon_items[weapon]);
     int p = player & 1;
     uint32_t obj = object_of(p);
-    *ram8(field8(p, game_profile.table_weapon)) = (uint8_t)weapon;
+    uint32_t flag = game_profile.object_pickup_flag ? game_profile.object_pickup_flag : 0x94;
+    uint8_t *now = ram8(field8(p, game_profile.table_weapon));
+    if (game_profile.table_previous_weapon && *now != weapon)
+        *ram8(field8(p, game_profile.table_previous_weapon)) = *now;
+    *now = (uint8_t)weapon;
     *ram8(field8(p, game_profile.table_subtype)) = rom8(game_profile.rom_weapon_subtype + weapon * game_profile.rom_weapon_subtype_stride);
     *ram8(field8(p, game_profile.table_shots)) = 0;
     ram16(field16(p, game_profile.table_ammo), rom16(game_profile.rom_weapon_ammo + weapon * game_profile.rom_weapon_ammo_stride));
-    *ram8(obj + 0x94) = game_profile.rom_weapon_flag ? rom8(game_profile.rom_weapon_flag + weapon) : 0;
-    if (game_profile.rom_weapon_flag) *ram8(obj + 0x95) = 0;
+    *ram8(obj + flag) = game_profile.rom_weapon_flag ? rom8(game_profile.rom_weapon_flag + weapon) : 0;
+    if (game_profile.rom_weapon_flag) *ram8(obj + flag + 1) = 0;
     if (game_profile.rom_weapon_form && cheats_form(p) <= 1)        /* normal: 0 pistol, 1 weapon */
         *ram8(obj + game_profile.object_form + 1) = (uint8_t)normal_form(p);
     return 1;
