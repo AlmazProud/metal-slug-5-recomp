@@ -258,6 +258,22 @@ if(EXISTS "${PD_ROMS}/mslug5_game_m68k")
         set_tests_properties(mslug5_cheats_vs_mame PROPERTIES LABELS mslug5
                              ENVIRONMENT "PD_CHEAT=6700,weapon,0,5\;7300,weapon,0,12\;7500,bombs,0,63\;7650,lives,0,7\;7800,soldier,0,1")
     endif()
+    # The vehicle cheat (phase4/vehicles): the Metal Slug spawned at frame 6700 (ridden by the bot);
+    # the MAME run writes the RAM bytes the spawn changed (PD_SPAWN_POKES) at the same frame.
+    set(ve ${PD_ANALYSIS}/phase4/vehicles/vehicles)
+    if(EXISTS "${ve}_fingerprints.txt" AND EXISTS "${ve}_known_vblank.txt")
+        file(READ "${ve}_date.txt" date)
+        file(READ "${ve}_frames.txt" frames)
+        string(STRIP "${date}" date)
+        string(STRIP "${frames}" frames)
+        add_test(NAME mslug5_vehicles_vs_mame
+                 COMMAND Python3::Interpreter -I ${PROJECT_SOURCE_DIR}/tools/verify_mission.py
+                         --exe $<TARGET_FILE:mslug5> --roms ${PD_ROMS}
+                         --inputs ${ve}_inputs.txt --reference ${ve}_fingerprints.txt
+                         --frames ${frames} --date ${date} --known-differences ${ve}_known_vblank.txt
+                         --output ${CMAKE_CURRENT_BINARY_DIR}/mslug5_vehicles_fingerprints_port.txt)
+        set_tests_properties(mslug5_vehicles_vs_mame PROPERTIES LABELS mslug5 ENVIRONMENT "PD_CHEAT=6700,vehicle,0,0")
+    endif()
     # Phase 3: games recorded by hand in MAME (grabar_partida.bat, empty NVRAM), replayed by
     # mame_run.py --replay --name NAME into PD_ANALYSIS/phase3/play: mslug5_play_<NAME>_vs_mame.
     # <NAME>_known_vblank.txt: VBlanks that differ only in the stack (docs/PHASE3_RECOMP.md).

@@ -19,6 +19,16 @@ static const char *const WEAPONS[] = {
     "Super Grenade", "Weapon 16", "Weapon 17", "Weapon 18",
 };
 
+/* Vehicles: the first 11 types of the object type table (0xE8CC0), found by spawning each one in
+   Mission 1 (all show the "IN" marker but the truck). Type 0x2C is the weapon item (0xB3DBC).
+   Names by appearance. */
+static const CheatVehicle VEHICLES[] = {
+    {0x00, "Metal Slug (SV-001)"}, {0x04, "Metal Slug (gold)"}, {0x08, "Metal Slug (variant)"},
+    {0x0C, "Metal Slug (gold, variant)"}, {0x10, "Slug Flyer"}, {0x14, "Slug Gunner"},
+    {0x18, "Slug Gunner (variant)"}, {0x1C, "Truck (no marker)"}, {0x20, "Cannon tank"},
+    {0x24, "Cannon tank (variant)"}, {0x28, "Walker (unknown)"},
+};
+
 /* Code that must be identical to the reference copy's for this profile to be used (profile.c). */
 static const ProfileWindow WINDOWS[] = {
     {0x0008D0, 0x0008EA},     /* debug dips cleared on boot (0x8DE) */
@@ -38,6 +48,8 @@ static const ProfileWindow WINDOWS[] = {
     {0x01C298, 0x01C454},     /* weapon records (0x1C298, 10 bytes), the give routine (0x1C356: D0
                                  player, D1 weapon) and its pickup: ammo +0xC, weapon +4, previous +5 */
     {0x04E854, 0x04E948},     /* status object: character $98, lives $99 (from the BIOS lives option) */
+    {0x0E8CC0, 0x0E8CEC},     /* object type table: the vehicles (types 0x00-0x28) */
+    {0x0E951C, 0x0E962A},     /* stage object records: command 8 (spawn_routine) */
 };
 
 const GameProfile game_profile = {
@@ -45,9 +57,9 @@ const GameProfile game_profile = {
     .subtitle = "",
     .windows = WINDOWS,
     .n_windows = (int)(sizeof WINDOWS / sizeof WINDOWS[0]),
-    .windows_sha256 = "0594ad08e3d5d743ea416db33c7f70bc7ca2016fba51e54c2b802da3acab277e",
-    .vehicles = NULL,
-    .n_vehicles = 0,
+    .windows_sha256 = "35b6d59669444666ccf48628c6bf33b3ae331c3a7bac73a5ea0b3d94e325f6bb",
+    .vehicles = VEHICLES,
+    .n_vehicles = (int)(sizeof VEHICLES / sizeof VEHICLES[0]),
     .sounds = NULL,
     .n_sounds = &SOUND_COUNT,
 
@@ -129,6 +141,22 @@ const GameProfile game_profile = {
     .rom_weapon_ammo_stride = 10,
     .object_pickup_flag = 0xA1,
     .table_previous_weapon = 5,
+
+    /* Stage object records: routine 0xE951C (commands 8-15, Metal Slug 3's 0x16106; A0 = record,
+     * A6 = the stage's object root 0x100BF4). Command 8: [8, length, group, flags, x, y, type*4
+     * (table 0xE8CC0), parameters...]. The object keeps a pointer to its record at +0x92, read only
+     * by two routines (0xD23C2, 0xD3084), not the vehicles'. x and y in the scroll layer's
+     * coordinates ($53A2(a5) = 0x10D3A2); the object's screen position is at +0x42 / +0x46. */
+    .spawn_routine = 0xE951Cu,
+    .spawn_parent = 0x100BF4u,
+    .spawn_head = {0x08, 0x0A, 0xFF, 0x00},
+    .spawn_x_at = 4,
+    .spawn_y_at = 6,
+    .spawn_type_at = 8,
+    .spawn_layer = 0x10D3A2u,
+    .object_position = 0x42,
+    .spawn_x = 0x70,
+    .spawn_y = 0,
 
     /* Title screen logo (attract, from frame ~911 after power-on with empty SRAM): sprites 344-376
      * ("METAL SLUG" and the 5) and 380 ("TM", first tile 0x44855, used to recognize the moment);
