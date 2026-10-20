@@ -348,6 +348,15 @@ bossrush 14119: cleared, 5/5 bosses defeated")
             ENVIRONMENT "PD_RECORDS=${CMAKE_CURRENT_BINARY_DIR}/mslug5_records_turbo.ini;PD_RECORDS_MIN_FRAMES=600;PD_DEVMODE=1;PD_DIPS=8009;PD_POKE=5800,10D680,4\;5800,10D681,6"
             PASS_REGULAR_EXPRESSION "mission 5 completed at frame [0-9]+: .*\\(not clean: slowdown off\\)")
     endif()
+    # Mission mode's direct start (cheats.h, cheats_mission_from): the coin right after the boot, no
+    # "How to play", Mission 3 written again after the new game clears it and loaded after the
+    # soldier select (the section byte 0xFF at frame 2707).
+    file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/mslug5_mission_direct.txt "301 306 coin1\n351 356 start1\n")
+    add_test(NAME mslug5_mission_mode_direct
+             COMMAND mslug5 --roms ${PD_ROMS} --headless --no-audio --frames 3000
+                     --script ${CMAKE_CURRENT_BINARY_DIR}/mslug5_mission_direct.txt --date 2026-10-18-00-59-09-0)
+    set_tests_properties(mslug5_mission_mode_direct PROPERTIES LABELS mslug5 ENVIRONMENT "PD_MISSION_ONCE=3"
+        PASS_REGULAR_EXPRESSION "start mission 3 written at frame 270[0-9]")
     # Phase 4: the sound menu (src/games/mslug5/sounds.c, the profile's driver modes) is audible in
     # the middle of the user's game and, after closing it, the game stays identical.
     set(play1 ${PD_ANALYSIS}/phase3/play/partida1)

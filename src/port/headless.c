@@ -662,8 +662,13 @@ int headless_run(const Options *o)
     if (getenv("PD_DIPS")) cheats_dips = (uint16_t)strtoul(getenv("PD_DIPS"), NULL, 16);
     if (getenv("PD_DEVMODE")) cheats_devmode = 1;
     if (getenv("PD_START_MISSION")) cheats_start_mission = atoi(getenv("PD_START_MISSION")) - 1;   /* 1 = normal */
-    /* PD_MISSION_ONCE=n: Mission mode's start (window.c fe_mission_start), mission n (1 = first) */
-    if (getenv("PD_MISSION_ONCE")) cheats_start_mission_once = atoi(getenv("PD_MISSION_ONCE")) - 1;
+    /* PD_MISSION_ONCE=n: Mission mode's start (window.c fe_mission_start), mission n (1 = first);
+       with the PLAY MANUAL known, its direct start from the end of the boot (the script brings
+       the coin and START) */
+    if (getenv("PD_MISSION_ONCE")) {
+        cheats_start_mission_once = atoi(getenv("PD_MISSION_ONCE")) - 1;
+        if (game_profile.manual_word) cheats_mission_from = game_profile.boot_frames;
+    }
     /* PD_BOSSRUSH=1: Boss Rush from the first new game (bossrush.c); its steps are printed. */
     if (getenv("PD_BOSSRUSH")) bossrush_start();
     cheats_apply();
@@ -692,7 +697,10 @@ int headless_run(const Options *o)
         cheats_input(&ng.joy[0], &ng.system[0]);
         ng_run_frame();
         pokes_apply();
+        int once = cheats_start_mission_once;
         cheats_frame();
+        if (once >= 0 && cheats_start_mission_once < 0)       /* PD_MISSION_ONCE: the mission written */
+            printf("start mission %d written at frame %llu\n", once + 1, (unsigned long long)ng.frames - 1);
         if (progress_file) {
             int m = progress_frame();
             if (m) printf("mission %d unlocked at frame %llu\n", m, (unsigned long long)ng.frames - 1);

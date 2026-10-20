@@ -83,6 +83,7 @@ static int mission_game;                      /* the game was started from Missi
 static int play_frame = -1;                  /* "Play": frames since requested (-1 = no) */
 static uint64_t power_on_frame;               /* ng.frames at the last reset */
 #define READY_FRAMES 900                      /* from power-on to the attract mode (title ~680) */
+static uint64_t play_ready = READY_FRAMES;    /* "Play" waits this long after power-on */
 /* Fast boot: up to this frame the BIOS boot runs unseen, with no inputs and silent, as fast as
    possible (the same frames as always: the machine's state afterwards does not change). */
 static uint64_t boot_until;
@@ -238,7 +239,7 @@ static void read_inputs(void)
     cheats_input(&ng.joy[0], &ng.system[0]);   /* developer menu: SELECT + D for the player */
     arcade_coins();
     /* "Play": coin and, a moment later, START; after a reset, once the game is up. */
-    if (play_frame >= 0 && ng.frames - power_on_frame >= READY_FRAMES) {
+    if (play_frame >= 0 && ng.frames - power_on_frame >= play_ready) {
         if (play_frame < 6) ng.system[0] |= NG_COIN;
         else if (play_frame >= 50 && play_frame < 56) ng.system[0] |= NG_START;
         if (++play_frame >= 56) play_frame = -1;
@@ -358,7 +359,14 @@ static float volume_gain(void)
     return v * v * v;
 }
 void fe_apply_volume(void) { if (audio) SDL_SetAudioStreamGain(audio, volume_gain()); }
-void fe_play(void) { play_frame = 0; mission_game = 0; }
+void fe_play(void)
+{
+    play_frame = 0;
+    play_ready = READY_FRAMES;
+    mission_game = 0;
+    cheats_start_mission_once = -1;               /* a Mission mode start left pending */
+    cheats_mission_from = 0;
+}
 void fe_service(void) { test_frames = 30; }
 
 /* Red blood: the game reads its BLOOD option as on (profile.h). */
@@ -386,6 +394,7 @@ void fe_reset(void)
     memcpy(ng.sram, sram, sizeof sram);
     power_on_frame = ng.frames;
     play_frame = -1;
+    cheats_mission_from = 0;
     boot_start();
     records_reset_tracking();
     bossbar_reset();
@@ -550,6 +559,7 @@ void fe_arcade_start(int continues)
     cpu_turbo = 0;
     debug_enable(0);
     play_frame = 0;                           /* the first coin and START */
+    play_ready = READY_FRAMES;
     fe_notify(T("Arcade mode: good luck!"));
 }
 
@@ -648,12 +658,20 @@ static void arcade_frame(void)
     }
 }
 
-/* Mission mode: a new game that starts at mission m (0-based). */
+/* Mission mode: a new game that starts at mission m (0-based). With the game's PLAY MANUAL known
+   (profile.h), straight to the soldier select: a reset, the coin and START as soon as the boot is
+   over, no "How to play" (cheats.h, cheats_mission_from). */
 void fe_mission_start(int m)
 {
+    int direct = game_profile.manual_word && profile_supported();
+    if (direct) fe_reset();
     mission_game = 1;
     cheats_start_mission_once = m;
+    cheats_start_section_once = -1;
+    cheats_mission_from = direct ? power_on_frame + game_profile.boot_frames : 0;
+    play_ready = direct ? game_profile.boot_frames : READY_FRAMES;
     play_frame = 0;
+    if (direct) fe_notify(T("Mission %d"), m + 1);
 }
 
 /* Window size: s x 224 lines (the aspect's width). */

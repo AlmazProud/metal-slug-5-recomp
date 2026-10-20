@@ -143,6 +143,12 @@ const GameProfile game_profile = {
      * BLOOD); the BIOS keeps them from 0x10FD8A, so BLOOD is 0x10FD92, read by 0x497A6. */
     .blood_word = 0x10FD92u,
     .blood_mask = 0xFF00u,
+    /* PLAY MANUAL, the list's fifth setting: 0x10FD8E (1 = on, the default). Off, START goes
+     * straight to the soldier select, and the new game clears the start bytes right away (frame
+     * 354 with a coin at 302), before the player is playing; the section byte becomes 0xFF when
+     * the mission is loaded after the soldier select (0x479BA). */
+    .manual_word = 0x10FD8Eu,
+    .manual_mask = 0xFF00u,
 
     /* Mission and section to start at: 0x10D680 / 0x10D681 ($5680(a5)). A new game sets both to 0
      * (0x47584, after the game's "How to play", which is mission 8); the mission controller loads

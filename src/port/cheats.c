@@ -13,6 +13,7 @@ int cheats_devmode;
 int cheats_start_mission;
 int cheats_start_mission_once = -1;
 int cheats_start_section_once = -1;
+uint64_t cheats_mission_from;
 FILE *cheats_spawn_log;
 
 const char *const CHEATS_SOLDIER_NAME[4] = {"Marco", "Eri", "Tarma", "Fio"};
@@ -284,7 +285,22 @@ void cheats_frame(void)
        (Metal Slug 3: docs/PHASE4_PROFILE.md). Only while a player is playing (BIOS player status
        at 0x10FDB6/0x10FDB7: 1 = playing): during the boot and the attract mode the bytes are 0 too. */
     int start = cheats_start_mission_once >= 0 ? cheats_start_mission_once : cheats_start_mission;
-    if ((start > 0 || cheats_start_mission_once >= 0) && game_profile.missions && profile_supported() &&
+    /* Mission mode's direct start (cheats.h): written again whenever the game clears the bytes,
+       until the mission is loaded (section byte 0xFF). Without it a single write could land on
+       bytes the game clears again (the attract's leftovers, the "How to play"): mission 1. */
+    int quick = cheats_mission_from && cheats_start_mission_once >= 0 && game_profile.manual_word &&
+                game_profile.missions && profile_supported();
+    ng_forced_read[NG_FORCED_MANUAL] = (NgForcedRead){quick && ng.frames >= cheats_mission_from, game_profile.manual_word,
+                                                      (uint16_t)game_profile.manual_mask, 0, 0, 0};
+    if (quick && ng.frames >= cheats_mission_from) {
+        uint8_t *m = ram8(game_profile.start_mission);
+        if (m[0] == 0 && m[1] == 0) m[0] = (uint8_t)start;
+        else if (m[0] == start && m[1] == 0xFF) {       /* loaded */
+            cheats_start_mission_once = -1;
+            cheats_mission_from = 0;
+            ng_forced_read[NG_FORCED_MANUAL].active = 0;
+        }
+    } else if ((start > 0 || cheats_start_mission_once >= 0) && game_profile.missions && profile_supported() &&
         (*ram8(0x10FDB6) == 1 || *ram8(0x10FDB7) == 1)) {
         uint8_t *m = ram8(game_profile.start_mission);
         if (m[0] == 0 && m[1] == 0) {

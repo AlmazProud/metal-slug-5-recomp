@@ -93,6 +93,11 @@ typedef struct {
     uint32_t rom_weapon_flag;
     uint32_t blood_word;
     uint32_t blood_mask;
+    /* The PLAY MANUAL soft dip (the "How to play" after START): Mission mode's direct start reads
+       it as off (cheats.h, cheats_mission_from). 0 = not known: Mission mode waits for the
+       attract mode and starts the mission when a player is playing. */
+    uint32_t manual_word;
+    uint32_t manual_mask;
     uint32_t logo_first;
     uint32_t logo_last;
     uint32_t logo_tm;

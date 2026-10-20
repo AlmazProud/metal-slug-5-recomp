@@ -25,6 +25,13 @@ extern int cheats_start_mission;         /* 0 = normal; n = new games start at m
 extern int cheats_start_mission_once;
 /* With it: the section (record of the mission's stage group) to start at (-1 = none). */
 extern int cheats_start_section_once;
+/* Mission mode's direct start (window.c fe_mission_start, after a reset; needs
+   game_profile.manual_word): from this frame (ng.frames; 0 = off) the game's PLAY MANUAL reads as
+   off and the once mission is written whenever the start bytes are 0, player playing or not (the
+   soldier select comes first), until the game has loaded it (section byte 0xFF); then it goes
+   back to 0. A first write can be cleared again by the game (a new game, the "How to play"), so
+   one write is not enough. */
+extern uint64_t cheats_mission_from;
 /* Research and tests (headless PD_SPAWN_POKES): each spawn writes the RAM bytes it changed there,
    as PD_POKE entries, so that a MAME run can make the same change at the same frame. */
 extern FILE *cheats_spawn_log;
