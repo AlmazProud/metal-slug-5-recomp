@@ -79,3 +79,13 @@ release audit clean, unpacked with the set in `game/` it runs the attract mode) 
 `release/notes-v1.0.1.md`: public, not a draft. The zip downloaded back has the same SHA-256.
 
 **Release:** https://github.com/AlmazProud/metal-slug-5-recomp/releases/tag/v1.0.1
+
+## v1.0.2 (2026-10-19)
+
+A fix of Mission mode: the chosen mission could become Mission 1. The mission was written once,
+the first frame a player was playing with the start bytes at 0; chosen while the attract had left
+them at 0, the write landed before the game's "How to play" cleared them again. Now Mission mode
+resets the machine, inserts the coin and START right after the fast boot with the PLAY MANUAL soft
+dip read as off (straight to the soldier select, about 3 s), and writes the mission again whenever
+the game clears the bytes, until it is loaded. New test `mslug5_mission_mode_direct`; `ctest`
+119/119.

@@ -6,7 +6,7 @@
 
 #define PORT_VERSION_MAJOR 1
 #define PORT_VERSION_MINOR 0
-#define PORT_VERSION_PATCH 1
-#define PORT_VERSION "1.0.1"
+#define PORT_VERSION_PATCH 2
+#define PORT_VERSION "1.0.2"
 
 #endif
